@@ -228,3 +228,39 @@ Started: Sun May 24 01:24:48 CST 2026
   - Guard condition: `!done && messages.value.length === 0 && onboardingStep.value === 'idle'` prevents re-triggering on tab switch
   - Browser verification skipped — no Playwright Chrome in environment
 ---
+
+## Sat May 24 04:45:00 CST 2026 - US-015
+- Implemented chat context clearing mechanism
+- **Files changed:** src/pages/index/index.vue
+- Features:
+  - After AI response completes, auto-clears UI messages after 1.5s delay (so user can read the response)
+  - "新对话" button added to input area, visible when messages exist, for manual context clearing
+  - Chat already didn't send history to API (only current message + expense summary), so API behavior unchanged
+  - Expense data unaffected by context clearing — persists in local database
+  - Both streaming (onComplete) and non-streaming fallback paths trigger auto-clear
+- **Learnings for future iterations:**
+  - The chat API only sends the current user message (enriched with expense summary) — no conversation history is included in API calls
+  - `clearContext()` resets `messages` to empty array and `scrollTop` to 0
+  - 1.5s delay before auto-clear gives user time to read the AI response before it disappears
+  - Onboarding messages are not auto-cleared (only the AI response paths trigger clearContext)
+  - Browser verification skipped — no Playwright Chrome in environment
+---
+
+## Sat May 24 05:00:00 CST 2026 - US-016
+- Implemented custom expense category management in settings page
+- **Files changed:** src/pages/settings/settings.vue (added category management UI), src/utils/ai-api.ts (dynamic category injection)
+- Features:
+  - Settings page shows all categories (default + custom) in a list with icons and names
+  - Default categories marked with "默认" badge, cannot be deleted
+  - Custom categories can be added with a name and icon picker (20 emoji options)
+  - Custom categories can be deleted with confirmation modal
+  - AI system prompt dynamically injects all current category names via regex replacement of the hardcoded "支持的分类" line
+  - `getSystemPrompt()` in ai-api.ts now calls `categoryService.getAll()` and replaces the categories list
+- **Learnings for future iterations:**
+  - The system prompt has a hardcoded category line "支持的分类：..." — `getSystemPrompt()` uses regex `/支持的分类：[^\n]*/` to replace it with dynamic categories
+  - Category CRUD was already implemented in `categoryService` (US-002) — this story only needed UI + AI integration
+  - Expense records store category as plain string name, not ID — renaming categories doesn't auto-update existing records
+  - `categoryService.add()` already forces `is_custom: true` for all new categories
+  - Icon picker uses a grid of emoji options; selected icon gets a blue border highlight
+  - Browser verification skipped — no Playwright Chrome in environment
+---

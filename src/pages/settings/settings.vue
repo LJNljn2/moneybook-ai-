@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import type { AiPlatform, ActivePlatformConfig } from '../../types'
+import type { AiPlatform, ActivePlatformConfig, Category } from '../../types'
 import { SettingKeys, DEFAULT_SYSTEM_PROMPT } from '../../types'
 import { aiPlatformService } from '../../store/ai-platforms'
 import { apiKeyService } from '../../store/api-keys'
 import { settingService } from '../../store/settings'
+import { categoryService } from '../../store/categories'
 import ApiKeyInput from '../../components/ApiKeyInput.vue'
 
 // Profile state
@@ -30,6 +31,14 @@ const systemPrompt = ref('')
 
 // Custom platform form
 const showCustomForm = ref(false)
+
+// Category management
+const categories = ref<Category[]>([])
+const newCategoryName = ref('')
+const newCategoryIcon = ref('')
+const showCategoryForm = ref(false)
+
+const ICON_OPTIONS = ['🍜', '🚗', '🛒', '🏠', '🎮', '💊', '📚', '📌', '✈️', '🎁', '☕', '🎬', '💪', '📱', '👕', '💇', '🐾', '🎵', '🏦', '💰']
 
 const selectedPlatform = computed(() =>
   platforms.value.find(p => p.id === selectedPlatformId.value)
@@ -76,6 +85,7 @@ function loadData() {
   if (an) aiNickname.value = an
 
   loadPlatformDetails()
+  loadCategories()
 }
 
 function loadPlatformDetails() {
@@ -250,6 +260,64 @@ function chooseAvatar(type: 'user' | 'ai') {
         settingService.set(SettingKeys.AI_AVATAR, tempPath)
       }
       uni.showToast({ title: '头像已更新', icon: 'success' })
+    },
+  })
+}
+
+function loadCategories() {
+  categories.value = categoryService.getAll()
+}
+
+function toggleCategoryForm() {
+  showCategoryForm.value = !showCategoryForm.value
+  if (showCategoryForm.value) {
+    newCategoryName.value = ''
+    newCategoryIcon.value = '📌'
+  }
+}
+
+function selectIcon(icon: string) {
+  newCategoryIcon.value = icon
+}
+
+function addCategory() {
+  if (!newCategoryName.value.trim()) {
+    uni.showToast({ title: '请输入分类名称', icon: 'none' })
+    return
+  }
+  const exists = categories.value.some(c => c.name === newCategoryName.value.trim())
+  if (exists) {
+    uni.showToast({ title: '分类已存在', icon: 'none' })
+    return
+  }
+  const colors = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#6BCB77', '#9B5DE5', '#F4845F', '#00BBF9', '#E91E63', '#FF9800', '#795548']
+  const color = colors[categories.value.length % colors.length]
+  categoryService.add({
+    name: newCategoryName.value.trim(),
+    icon: newCategoryIcon.value || '📌',
+    color,
+    is_custom: true,
+  })
+  loadCategories()
+  showCategoryForm.value = false
+  newCategoryName.value = ''
+  newCategoryIcon.value = ''
+  uni.showToast({ title: '已添加', icon: 'success' })
+}
+
+function deleteCategory(id: string) {
+  const cat = categories.value.find(c => c.id === id)
+  if (!cat || !cat.is_custom) return
+
+  uni.showModal({
+    title: '确认删除',
+    content: `确定要删除分类「${cat.name}」吗？已有记账记录中的该分类不会被删除。`,
+    success(res) {
+      if (res.confirm) {
+        categoryService.remove(id)
+        loadCategories()
+        uni.showToast({ title: '已删除', icon: 'success' })
+      }
     },
   })
 }
@@ -448,6 +516,62 @@ onMounted(() => {
       <view class="actions">
         <button class="btn-save" @click="saveSystemPrompt">保存提示词</button>
         <button class="btn-reset" @click="resetSystemPrompt">恢复默认</button>
+      </view>
+    </view>
+
+    <!-- Category Management Section -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">消费分类管理</text>
+      </view>
+
+      <view class="category-list">
+        <view
+          class="category-item"
+          v-for="cat in categories"
+          :key="cat.id"
+        >
+          <view class="category-info">
+            <text class="category-icon">{{ cat.icon }}</text>
+            <text class="category-name">{{ cat.name }}</text>
+            <text class="category-badge" v-if="!cat.is_custom">默认</text>
+          </view>
+          <text
+            class="category-delete"
+            v-if="cat.is_custom"
+            @click="deleteCategory(cat.id)"
+          >删除</text>
+        </view>
+      </view>
+
+      <view class="add-category-toggle" @click="toggleCategoryForm">
+        <text class="add-category-text">{{ showCategoryForm ? '收起' : '+ 添加自定义分类' }}</text>
+      </view>
+
+      <view class="custom-form" v-if="showCategoryForm">
+        <view class="form-item">
+          <text class="form-label">分类名称</text>
+          <input
+            class="form-input"
+            v-model="newCategoryName"
+            placeholder="如：宠物、礼物"
+          />
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">选择图标</text>
+          <view class="icon-picker">
+            <text
+              class="icon-option"
+              v-for="icon in ICON_OPTIONS"
+              :key="icon"
+              :class="{ 'icon-selected': newCategoryIcon === icon }"
+              @click="selectIcon(icon)"
+            >{{ icon }}</text>
+          </view>
+        </view>
+
+        <button class="btn-save" @click="addCategory">添加分类</button>
       </view>
     </view>
 
@@ -706,5 +830,84 @@ onMounted(() => {
   padding: 14rpx 28rpx;
   text-align: center;
   line-height: 1.4;
+}
+
+.category-list {
+  margin-bottom: 16rpx;
+}
+
+.category-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.category-item:last-child {
+  border-bottom: none;
+}
+
+.category-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.category-icon {
+  font-size: 36rpx;
+}
+
+.category-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.category-badge {
+  font-size: 20rpx;
+  color: #999;
+  background-color: #f0f0f0;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+}
+
+.category-delete {
+  font-size: 24rpx;
+  color: #ff4d4f;
+  padding: 8rpx 16rpx;
+}
+
+.add-category-toggle {
+  padding: 16rpx 0;
+  text-align: center;
+}
+
+.add-category-text {
+  font-size: 26rpx;
+  color: #2b7cff;
+}
+
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 12rpx 0;
+}
+
+.icon-option {
+  font-size: 40rpx;
+  width: 64rpx;
+  height: 64rpx;
+  text-align: center;
+  line-height: 64rpx;
+  border-radius: 12rpx;
+  border: 2rpx solid #eee;
+  background-color: #fff;
+}
+
+.icon-selected {
+  border-color: #2b7cff;
+  background-color: #e8f0ff;
 }
 </style>

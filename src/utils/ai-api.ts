@@ -8,6 +8,7 @@ import { DEFAULT_SYSTEM_PROMPT } from '../types'
 import { aiPlatformService } from '../store/ai-platforms'
 import { apiKeyService } from '../store/api-keys'
 import { settingService } from '../store/settings'
+import { categoryService } from '../store/categories'
 import { SettingKeys } from '../types'
 import { redactApiKey } from './redact'
 
@@ -49,10 +50,17 @@ function getActiveConfig(): { baseUrl: string; apiKey: string; model: string } |
 }
 
 /**
- * 获取系统提示词（用户自定义或默认）
+ * 获取系统提示词（用户自定义或默认），动态注入当前分类列表
  */
 function getSystemPrompt(): string {
-  return settingService.get(SettingKeys.SYSTEM_PROMPT) ?? DEFAULT_SYSTEM_PROMPT
+  const base = settingService.get(SettingKeys.SYSTEM_PROMPT) ?? DEFAULT_SYSTEM_PROMPT
+  const allCategories = categoryService.getAll()
+  const categoryNames = allCategories.map(c => c.name).join('、')
+  // 替换硬编码的分类列表为动态列表
+  return base.replace(
+    /支持的分类：[^\n]*/,
+    `支持的分类：${categoryNames}`
+  )
 }
 
 /**
