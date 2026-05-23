@@ -292,8 +292,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 19,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "PieChart emits slice-click, category chips filter both charts and list. Bar chart supports weekly mode for longer ranges."
     },
     {
       "id": "US-020",

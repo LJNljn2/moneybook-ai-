@@ -312,3 +312,22 @@ Started: Sun May 24 01:24:48 CST 2026
   - Category colors come from Category.color field in storage — charts inherit any custom category colors
   - Browser verification skipped — no Playwright Chrome in environment
 ---
+
+## Sat May 24 05:45:00 CST 2026 - US-019
+- Added chart category filter & time range selector with pie chart click-to-filter
+- **Files changed:** src/pages/statistics/statistics.vue (major update), src/components/PieChart.vue (added slice-click emit), src/components/BarChart.vue (added weekly mode)
+- Features:
+  - Chart time range selector: 本月/近三月/近半年/自定义 — appears above charts when month tab is active
+  - Charts react to category filter changes in real-time (both pie and bar update)
+  - Pie chart slices emit `slice-click` event with category name — clicking a slice sets category filter to that single category
+  - Bar chart supports `mode` prop: 'daily' (for month view) or 'weekly' (for 3+/6-month ranges, aggregated by ISO week)
+  - Custom date range uses `uni.showModal` with `editable: true` for date input (H5 compatible)
+  - Summary card label dynamically shows current chart range description
+  - Removed `uni.showDatePicker` calls — not available in UniApp types; modal with editable input works cross-platform
+- **Learnings for future iterations:**
+  - PieChart now emits `slice-click` with category name; parent components can use this to filter by category
+  - BarChart `mode` prop defaults to 'daily' if not specified — backward compatible
+  - Custom date input via `uni.showModal({ editable: true })` is the reliable cross-platform approach in UniApp
+  - Chart data computation (`chartExpenses`) uses `getChartDateRange()` which is separate from `getDateRange()` for the list — allows charts and list to show different time ranges independently
+  - Browser verification skipped — no Playwright Chrome in environment
+---
