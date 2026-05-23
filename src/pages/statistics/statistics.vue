@@ -55,18 +55,50 @@
       </view>
     </scroll-view>
 
-    <!-- Summary card + charts (month tab only) -->
+    <!-- Charts section: time range + summary + charts -->
     <template v-if="activeDateTab === 'month'">
-      <view class="summary-card">
-        <view class="summary-card-title">
-          <text class="summary-card-label">{{ monthLabel }}总支出</text>
+      <!-- Chart time range selector -->
+      <view class="chart-range-bar">
+        <view
+          v-for="r in chartRanges"
+          :key="r.key"
+          class="chart-range-tab"
+          :class="{ 'chart-range-tab--active': activeChartRange === r.key }"
+          @tap="selectChartRange(r.key)"
+        >
+          <text class="chart-range-text">{{ r.label }}</text>
         </view>
-        <text class="summary-card-amount">¥{{ monthTotal.toFixed(2) }}</text>
       </view>
 
-      <view class="charts-area" v-if="monthTotal > 0">
-        <PieChart :items="categoryPieData" />
-        <BarChart :data="dailyBarData" :monthLabel="monthLabel" />
+      <!-- Custom date range inputs -->
+      <view v-if="activeChartRange === 'custom'" class="custom-range-bar">
+        <view class="custom-range-item" @tap="pickStartDate">
+          <text class="custom-range-label">开始</text>
+          <text class="custom-range-value">{{ customStart || '选择日期' }}</text>
+        </view>
+        <text class="custom-range-sep">—</text>
+        <view class="custom-range-item" @tap="pickEndDate">
+          <text class="custom-range-label">结束</text>
+          <text class="custom-range-value">{{ customEnd || '选择日期' }}</text>
+        </view>
+      </view>
+
+      <!-- Summary card -->
+      <view class="summary-card">
+        <view class="summary-card-title">
+          <text class="summary-card-label">{{ chartRangeLabel }}总支出</text>
+        </view>
+        <text class="summary-card-amount">¥{{ chartTotal.toFixed(2) }}</text>
+      </view>
+
+      <!-- Charts -->
+      <view class="charts-area" v-if="chartTotal > 0">
+        <PieChart :items="categoryPieData" @slice-click="onPieSliceClick" />
+        <BarChart :data="barData" :monthLabel="chartRangeLabel" :mode="barMode" />
+      </view>
+
+      <view class="charts-empty" v-else>
+        <text class="charts-empty-text">暂无数据</text>
       </view>
     </template>
 
@@ -128,9 +160,15 @@ import PieChart from '@/components/PieChart.vue'
 import BarChart from '@/components/BarChart.vue'
 
 type DateTab = 'today' | 'week' | 'month' | 'all'
+type ChartRange = 'month' | '3months' | '6months' | 'custom'
 
 interface DateTabItem {
   key: DateTab
+  label: string
+}
+
+interface ChartRangeItem {
+  key: ChartRange
   label: string
 }
 
@@ -141,13 +179,25 @@ const dateTabs: DateTabItem[] = [
   { key: 'all', label: '全部' },
 ]
 
+const chartRanges: ChartRangeItem[] = [
+  { key: 'month', label: '本月' },
+  { key: '3months', label: '近三月' },
+  { key: '6months', label: '近半年' },
+  { key: 'custom', label: '自定义' },
+]
+
 const activeDateTab = ref<DateTab>('month')
+const activeChartRange = ref<ChartRange>('month')
 const selectedCategories = ref<string[]>([])
 const categories = ref<Category[]>([])
 const allExpenses = ref<Expense[]>([])
 
 // Month navigation state: 'YYYY-MM' format
 const selectedMonth = ref(formatYearMonth(new Date()))
+
+// Custom date range
+const customStart = ref('')
+const customEnd = ref('')
 
 function formatYearMonth(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -164,16 +214,39 @@ const isCurrentMonth = computed(() => {
   return selectedMonth.value === formatYearMonth(new Date())
 })
 
+// Chart range label for display
+const chartRangeLabel = computed(() => {
+  switch (activeChartRange.value) {
+    case 'month':
+      return monthLabel.value
+    case '3months': {
+      const now = new Date()
+      const threeAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+      return `${formatYearMonth(threeAgo).replace('-', '年')}月 - ${formatYearMonth(now).replace('-', '年')}月`
+    }
+    case '6months': {
+      const now = new Date()
+      const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+      return `${formatYearMonth(sixAgo).replace('-', '年')}月 - ${formatYearMonth(now).replace('-', '年')}月`
+    }
+    case 'custom':
+      if (customStart.value && customEnd.value) {
+        return `${customStart.value} 至 ${customEnd.value}`
+      }
+      return '自定义范围'
+  }
+})
+
 function prevMonth() {
   const [y, m] = selectedMonth.value.split('-').map(Number)
-  const d = new Date(y, m - 2, 1) // m-2 because m is 1-indexed and we want previous month
+  const d = new Date(y, m - 2, 1)
   selectedMonth.value = formatYearMonth(d)
 }
 
 function nextMonth() {
   if (isCurrentMonth.value) return
   const [y, m] = selectedMonth.value.split('-').map(Number)
-  const d = new Date(y, m, 1) // m is 1-indexed, so m gives next month
+  const d = new Date(y, m, 1)
   selectedMonth.value = formatYearMonth(d)
 }
 
@@ -194,7 +267,7 @@ function getDateRange(tab: DateTab): { start: string; end: string } {
     case 'today':
       return { start: today, end: today }
     case 'week': {
-      const dayOfWeek = now.getDay() || 7 // Monday = 1
+      const dayOfWeek = now.getDay() || 7
       const monday = new Date(now)
       monday.setDate(now.getDate() - dayOfWeek + 1)
       return { start: monday.toISOString().slice(0, 10), end: today }
@@ -202,7 +275,7 @@ function getDateRange(tab: DateTab): { start: string; end: string } {
     case 'month': {
       const [y, m] = selectedMonth.value.split('-').map(Number)
       const firstDay = new Date(y, m - 1, 1)
-      const lastDay = new Date(y, m, 0) // day 0 of next month = last day of current
+      const lastDay = new Date(y, m, 0)
       return {
         start: firstDay.toISOString().slice(0, 10),
         end: lastDay.toISOString().slice(0, 10),
@@ -213,8 +286,63 @@ function getDateRange(tab: DateTab): { start: string; end: string } {
   }
 }
 
+function getChartDateRange(): { start: string; end: string } {
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+
+  switch (activeChartRange.value) {
+    case 'month':
+      return getDateRange('month')
+    case '3months': {
+      const threeAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
+      return { start: threeAgo.toISOString().slice(0, 10), end: today }
+    }
+    case '6months': {
+      const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+      return { start: sixAgo.toISOString().slice(0, 10), end: today }
+    }
+    case 'custom':
+      if (customStart.value && customEnd.value) {
+        return { start: customStart.value, end: customEnd.value }
+      }
+      return getDateRange('month')
+  }
+}
+
 function selectDateTab(tab: DateTab) {
   activeDateTab.value = tab
+}
+
+function selectChartRange(range: ChartRange) {
+  activeChartRange.value = range
+}
+
+function pickStartDate() {
+  uni.showModal({
+    title: '输入开始日期',
+    content: customStart.value || 'YYYY-MM-DD',
+    editable: true,
+    placeholderText: 'YYYY-MM-DD',
+    success(res: { confirm: boolean; content?: string }) {
+      if (res.confirm && res.content) {
+        customStart.value = res.content.trim()
+      }
+    },
+  })
+}
+
+function pickEndDate() {
+  uni.showModal({
+    title: '输入结束日期',
+    content: customEnd.value || 'YYYY-MM-DD',
+    editable: true,
+    placeholderText: 'YYYY-MM-DD',
+    success(res: { confirm: boolean; content?: string }) {
+      if (res.confirm && res.content) {
+        customEnd.value = res.content.trim()
+      }
+    },
+  })
 }
 
 function toggleCategory(name: string) {
@@ -230,6 +358,11 @@ function clearCategoryFilter() {
   selectedCategories.value = []
 }
 
+function onPieSliceClick(name: string) {
+  // Set category filter to just this category
+  selectedCategories.value = [name]
+}
+
 const filteredExpenses = computed(() => {
   const { start, end } = getDateRange(activeDateTab.value)
   return expenseService.getByDateRangeAndCategory(
@@ -243,19 +376,23 @@ const totalAmount = computed(() => {
   return filteredExpenses.value.reduce((sum, e) => sum + e.amount, 0)
 })
 
-// Month-specific data for charts
-const monthExpenses = computed(() => {
-  const { start, end } = getDateRange('month')
-  return expenseService.getByDateRangeAndCategory(start, end)
+// Chart data: uses chart time range and category filter
+const chartExpenses = computed(() => {
+  const { start, end } = getChartDateRange()
+  return expenseService.getByDateRangeAndCategory(
+    start,
+    end,
+    selectedCategories.value.length > 0 ? selectedCategories.value : undefined
+  )
 })
 
-const monthTotal = computed(() => {
-  return monthExpenses.value.reduce((sum, e) => sum + e.amount, 0)
+const chartTotal = computed(() => {
+  return chartExpenses.value.reduce((sum, e) => sum + e.amount, 0)
 })
 
 const categoryPieData = computed(() => {
   const catMap = new Map<string, number>()
-  for (const e of monthExpenses.value) {
+  for (const e of chartExpenses.value) {
     catMap.set(e.category, (catMap.get(e.category) ?? 0) + e.amount)
   }
   return Array.from(catMap.entries())
@@ -271,15 +408,41 @@ const categoryPieData = computed(() => {
     .sort((a, b) => b.value - a.value)
 })
 
-const dailyBarData = computed(() => {
+// Bar chart mode: daily for month view, weekly for longer ranges
+const barMode = computed((): 'daily' | 'weekly' => {
+  if (activeChartRange.value === 'month') return 'daily'
+  return 'weekly'
+})
+
+const barData = computed(() => {
+  if (barMode.value === 'weekly') {
+    // Aggregate by ISO week
+    const weekMap = new Map<string, number>()
+    for (const e of chartExpenses.value) {
+      const weekKey = getWeekKey(e.date)
+      weekMap.set(weekKey, (weekMap.get(weekKey) ?? 0) + e.amount)
+    }
+    return Array.from(weekMap.entries())
+      .map(([date, amount]) => ({ date, amount }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }
+  // Daily aggregation
   const dayMap = new Map<string, number>()
-  for (const e of monthExpenses.value) {
+  for (const e of chartExpenses.value) {
     dayMap.set(e.date, (dayMap.get(e.date) ?? 0) + e.amount)
   }
   return Array.from(dayMap.entries())
     .map(([date, amount]) => ({ date, amount }))
     .sort((a, b) => a.date.localeCompare(b.date))
 })
+
+function getWeekKey(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const dayOfWeek = d.getDay() || 7 // Monday = 1
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - dayOfWeek + 1)
+  return monday.toISOString().slice(0, 10)
+}
 
 function getCategoryIcon(categoryName: string): string {
   const cat = categories.value.find(c => c.name === categoryName)
@@ -420,6 +583,76 @@ function handleDelete(expense: Expense) {
   color: #2b7cff;
 }
 
+/* Chart time range selector */
+.chart-range-bar {
+  display: flex;
+  gap: 0;
+  margin: 16rpx 24rpx 0;
+  background-color: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+.chart-range-tab {
+  flex: 1;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+}
+
+.chart-range-tab--active {
+  background-color: #e8f0fe;
+}
+
+.chart-range-text {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.chart-range-tab--active .chart-range-text {
+  color: #2b7cff;
+  font-weight: bold;
+}
+
+/* Custom date range inputs */
+.custom-range-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
+  margin: 12rpx 24rpx 0;
+  padding: 16rpx 24rpx;
+  background-color: #fff;
+  border-radius: 12rpx;
+}
+
+.custom-range-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8rpx 20rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+}
+
+.custom-range-label {
+  font-size: 20rpx;
+  color: #999;
+}
+
+.custom-range-value {
+  font-size: 24rpx;
+  color: #333;
+  margin-top: 4rpx;
+}
+
+.custom-range-sep {
+  font-size: 24rpx;
+  color: #ccc;
+}
+
 /* Summary card */
 .summary-card {
   background-color: #fff;
@@ -447,6 +680,16 @@ function handleDelete(expense: Expense) {
 /* Charts area */
 .charts-area {
   padding: 0 24rpx;
+}
+
+.charts-empty {
+  padding: 40rpx 0;
+  align-items: center;
+}
+
+.charts-empty-text {
+  font-size: 24rpx;
+  color: #ccc;
 }
 
 /* Summary bar */

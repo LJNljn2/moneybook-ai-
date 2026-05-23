@@ -12,6 +12,7 @@
           :fill="slice.color"
           stroke="#fff"
           stroke-width="1"
+          @tap="$emit('slice-click', slice.name)"
         />
         <text
           v-for="(label, i) in labels"
@@ -47,6 +48,7 @@ interface PieItem {
 }
 
 const props = defineProps<{ items: PieItem[] }>()
+const emit = defineEmits<{ (e: 'slice-click', name: string): void }>()
 
 const total = computed(() => props.items.reduce((s, i) => s + i.value, 0))
 
@@ -58,6 +60,7 @@ function getPercent(v: number): number {
 interface Slice {
   path: string
   color: string
+  name: string
 }
 
 interface Label {
@@ -96,7 +99,7 @@ const slices = computed<Slice[]>(() => {
       path = `M${CX},${CY} L${x1.toFixed(1)},${y1.toFixed(1)} A${R},${R} 0 ${largeArc},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z`
     }
 
-    result.push({ path, color: item.color })
+    result.push({ path, color: item.color, name: item.name })
     startAngle = endAngle
   }
   return result

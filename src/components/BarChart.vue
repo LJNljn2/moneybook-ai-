@@ -1,7 +1,7 @@
 <template>
   <view class="bar-chart-container">
     <view class="bar-chart-title">
-      <text class="bar-chart-title-text">每日支出</text>
+      <text class="bar-chart-title-text">{{ props.mode === 'weekly' ? '每周支出' : '每日支出' }}</text>
     </view>
     <view class="bar-chart-body" v-if="bars.length > 0">
       <svg viewBox="0 0 320 120" class="bar-svg">
@@ -46,6 +46,7 @@ interface DailyData {
 const props = defineProps<{
   data: DailyData[]
   monthLabel: string
+  mode?: 'daily' | 'weekly'
 }>()
 
 const CHART_LEFT = 36
