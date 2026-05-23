@@ -323,8 +323,8 @@
         "Typecheck passes"
       ],
       "priority": 21,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Configured manifest.json with app name/appid/signing, generated icons + keystore, added build scripts. Actual APK generation requires HBuilderX cloud packaging or Android SDK."
     }
   ]
 }

@@ -11,6 +11,8 @@ Started: Sun May 24 01:24:48 CST 2026
 - AI streaming: `chatCompletionStream` for H5, `chatCompletion` fallback for other platforms
 - On non-tabBar pages, use `uni.navigateTo`; on tabBar pages, use `uni.switchTab`
 - For lightweight charts in UniApp H5, use custom SVG components instead of external chart libraries — reactive via Vue computed properties, no npm dependencies
+- For APP/Android builds: `npm run dev:app` (dev) or `npx uni build -p app` (prod); APK packaging requires HBuilderX cloud packaging or Android SDK
+- App config lives in `src/manifest.json` — set `name`, `appid`, `distribute.android` for Android builds
 ---
 
 ## Sun May 24 01:35:00 CST 2026 - US-002
@@ -348,4 +350,26 @@ Started: Sun May 24 01:24:48 CST 2026
   - Export uses filteredExpenses (already sorted by date desc) — matches what user sees on screen
   - Column widths set explicitly via ws['!cols'] for readability
   - Browser verification skipped — no Playwright Chrome in environment
+---
+
+## Sat May 24 06:15:00 CST 2026 - US-021
+- Configured project for Android APK packaging and signing
+- **Files changed:** src/manifest.json (updated app config), package.json (added app build scripts), static/app-icon/* (icons + splash + keystore, new), scripts/build-android.sh (new)
+- Features:
+  - Manifest configured: app name "MoneyChat", appid "__UNI__MNYCHAT", description, version info
+  - Android SDK settings: minSdkVersion 24, targetSdkVersion 33, ABI filters for armeabi-v7a + arm64-v8a
+  - Cleaned up permissions (removed unnecessary ones like READ_LOGS, GET_ACCOUNTS, READ_PHONE_STATE; added INTERNET, storage permissions)
+  - Signing config: keystore at static/app-icon/moneychat.keystore with dev credentials (moneychat/moneychat)
+  - App icons generated at all required Android densities (48/72/96/144/192px) as PNGs with blue (#2B7CFF) background
+  - Splash screen generated (1080x1920 PNG)
+  - Added `dev:app` and `build:app` npm scripts
+  - Build helper script at scripts/build-android.sh with cloud/local build instructions
+- **Learnings for future iterations:**
+  - UniApp CLI doesn't have a native `build:app` in the default template — must add it manually
+  - For APK generation, two paths: HBuilderX cloud packaging (easiest) or local Android SDK + Gradle
+  - Keystore generated via OpenSSL PKCS12 (no keytool/Java needed); for production, regenerate with secure passwords
+  - The `signatureConfigs` in manifest.json expects `storePath` relative to project root, not `src/`
+  - App icons must be PNG (not SVG) and provided at multiple densities for Android
+  - Permissions were trimmed to only what the app actually needs (internet, camera, storage, network, vibrate, wakelock)
+- Browser verification skipped — no Playwright Chrome in environment
 ---
