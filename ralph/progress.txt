@@ -98,3 +98,34 @@ Started: Sun May 24 01:24:48 CST 2026
   - Changes save to local storage immediately on button press — no "apply" step needed, already effective next AI call
   - `picker` component in UniApp uses index-based value, not direct value binding
 ---
+
+## Sat May 24 03:00:00 CST 2026 - US-008
+- Added system prompt management section to settings page
+- **Files changed:** src/pages/settings/settings.vue
+- Features:
+  - New "系统提示词" section with textarea for editing the system prompt
+  - Loads current prompt from storage on mount, falls back to DEFAULT_SYSTEM_PROMPT
+  - "保存提示词" button saves to local storage via settingService
+  - "恢复默认" button with confirmation modal resets to DEFAULT_SYSTEM_PROMPT
+- **Learnings for future iterations:**
+  - System prompt stored under `system_prompt` key via settingService — same key already used by getSystemPrompt() in ai-api.ts, so changes take effect immediately on next AI call
+  - `textarea` with `:maxlength="-1"` allows unlimited input in UniApp
+  - Reused existing section/form-item CSS pattern from model config section for consistency
+  - Browser verification skipped — no Playwright chrome available in this environment
+---
+
+## Sat May 24 03:15:00 CST 2026 - US-009
+- Added bottom tab bar with 3 tabs: 对话记账, 统计数据, 设置
+- **Files changed:** src/pages.json (added tabBar config + statistics route), src/pages/index/index.vue (removed settings nav button), src/pages/statistics/statistics.vue (new placeholder page), src/static/tabbar/*.png (6 icon files)
+- Tab bar uses UniApp's native tabBar with iconPath/selectedIconPath
+- Selected color: #2B7CFF (blue), unselected: #999999 (gray), background: #FFFFFF
+- Created 6 PNG tab bar icons programmatically (chat, stats, settings in gray + blue)
+- Statistics page is a placeholder with "功能开发中，敬请期待" text
+- Removed the temporary "设置" button from index page (now reachable via tab bar)
+- **Learnings for future iterations:**
+  - UniApp tabBar pages must use `uni.switchTab`, not `uni.navigateTo` — navigating to a tabBar page with navigateTo will fail silently
+  - tabBar `iconPath` paths in pages.json are relative to the project root (not src/)
+  - Icon images must be PNG/JPG, not SVG — UniApp doesn't support SVG for tabBar icons
+  - When adding a tabBar, the page order in `pages` array matters less, but tabBar `list` order determines tab display order
+  - Browser verification skipped — no Playwright chrome available in this environment
+---

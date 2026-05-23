@@ -4,14 +4,10 @@
     <view class="text-area">
       <text class="title">MoneyChat</text>
     </view>
-    <button class="nav-btn" @click="goToSettings">设置</button>
   </view>
 </template>
 
 <script setup lang="ts">
-function goToSettings() {
-  uni.navigateTo({ url: '/pages/settings/settings' })
-}
 </script>
 
 <style>
@@ -42,12 +38,4 @@ function goToSettings() {
   color: #333;
 }
 
-.nav-btn {
-  background-color: #2b7cff;
-  color: #fff;
-  font-size: 30rpx;
-  border-radius: 12rpx;
-  padding: 0 60rpx;
-  line-height: 88rpx;
-}
 </style>
