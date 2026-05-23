@@ -53,6 +53,20 @@
           </view>
         </view>
 
+        <!-- Expense feedback cards -->
+        <view
+          v-for="card in expenseCards"
+          :key="card.id"
+          class="expense-feedback-row"
+        >
+          <ExpenseFeedbackCard
+            :expense="card.expense"
+            :is-deleted="card.deleted"
+            @edit="handleEditExpense"
+            @delete="handleDeleteExpense"
+          />
+        </view>
+
         <!-- Empty state -->
         <view v-if="messages.length === 0 && !isStreaming" class="empty-state">
           <text class="empty-title">开始记账吧</text>
@@ -92,8 +106,10 @@ import { onShow } from '@dcloudio/uni-app'
 import { chatCompletionStream, chatCompletion, isConfigured } from '@/utils/ai-api'
 import { extractExpenses, buildRecentExpenseSummary } from '@/utils/expense-parser'
 import { expenseService } from '@/store/expenses'
+import { categoryService } from '@/store/categories'
 import { settingService } from '@/store/settings'
-import { SettingKeys, type ChatMessage } from '@/types'
+import { SettingKeys, type ChatMessage, type Expense } from '@/types'
+import ExpenseFeedbackCard from '@/components/ExpenseFeedbackCard.vue'
 
 interface UiMessage {
   id: string
@@ -101,9 +117,16 @@ interface UiMessage {
   content: string
 }
 
+interface ExpenseCard {
+  id: string
+  expense: Expense
+  deleted: boolean
+}
+
 type OnboardingStep = 'idle' | 'welcome' | 'name' | 'budget' | 'done'
 
 const messages = ref<UiMessage[]>([])
+const expenseCards = ref<ExpenseCard[]>([])
 const inputText = ref('')
 const isStreaming = ref(false)
 const scrollTop = ref(0)
@@ -220,21 +243,68 @@ const canSend = computed(() => {
 
 /**
  * 从 AI 回复文本中提取记账数据并保存到本地
- * 保存成功后显示 toast 提示
+ * 保存成功后创建反馈卡片显示在聊天中
  */
 function saveExpensesFromText(text: string) {
   const parsed = extractExpenses(text)
   if (parsed.length === 0) return
 
+  const categories = categoryService.getAll()
+
   for (const item of parsed) {
-    expenseService.add(item)
+    // 如果 AI 提取的分类不在已知分类中，归入「其他」
+    const validCategory = categories.some(c => c.name === item.category)
+      ? item.category
+      : '其他'
+
+    const saved = expenseService.add({ ...item, category: validCategory })
+    expenseCards.value.push({
+      id: saved.id,
+      expense: saved,
+      deleted: false,
+    })
   }
 
-  const summary = parsed.length === 1
-    ? `已记录：${parsed[0].category} ¥${parsed[0].amount}`
-    : `已记录 ${parsed.length} 笔消费`
+  scrollToBottom()
+}
 
-  uni.showToast({ title: summary, icon: 'success', duration: 2000 })
+/**
+ * 编辑记账反馈卡片 - 弹出编辑弹窗
+ */
+function handleEditExpense(expense: Expense) {
+  uni.showModal({
+    title: '编辑备注',
+    content: expense.note || '(无备注)',
+    editable: true,
+    placeholderText: '输入新的备注...',
+    success(res) {
+      if (res.confirm && res.content !== undefined) {
+        const updated = expenseService.update(expense.id, { note: res.content })
+        if (updated) {
+          const card = expenseCards.value.find(c => c.id === expense.id)
+          if (card) card.expense = updated
+        }
+      }
+    },
+  })
+}
+
+/**
+ * 删除记账反馈卡片 - 二次确认后删除
+ */
+function handleDeleteExpense(expense: Expense) {
+  uni.showModal({
+    title: '确认删除',
+    content: `确定删除「${expense.category} ¥${expense.amount}」吗？`,
+    confirmColor: '#ff4d4f',
+    success(res) {
+      if (res.confirm) {
+        expenseService.remove(expense.id)
+        const card = expenseCards.value.find(c => c.id === expense.id)
+        if (card) card.deleted = true
+      }
+    },
+  })
 }
 
 function scrollToBottom() {
@@ -250,6 +320,7 @@ function scrollToBottom() {
  */
 function clearContext() {
   messages.value = []
+  expenseCards.value = []
   scrollTop.value = 0
 }
 
@@ -320,7 +391,8 @@ async function handleSend() {
         isStreaming.value = false
         scrollToBottom()
         // 一轮对话结束，自动清除上下文（记账数据不受影响）
-        setTimeout(() => clearContext(), 1500)
+        // 延长等待时间，让用户有时间查看和操作反馈卡片
+        setTimeout(() => clearContext(), 8000)
       },
       onError(err: Error) {
         isStreaming.value = false
@@ -345,7 +417,7 @@ async function handleSend() {
       isStreaming.value = false
       scrollToBottom()
       // 一轮对话结束，自动清除上下文（记账数据不受影响）
-      setTimeout(() => clearContext(), 1500)
+      setTimeout(() => clearContext(), 8000)
     } catch (err: any) {
       isStreaming.value = false
       messages.value.push({
@@ -468,6 +540,13 @@ async function handleSend() {
 .empty-hint {
   font-size: 26rpx;
   color: #999;
+}
+
+.expense-feedback-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24rpx;
+  padding: 0 24rpx;
 }
 
 .input-area {
