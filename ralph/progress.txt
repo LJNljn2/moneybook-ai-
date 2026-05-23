@@ -63,3 +63,18 @@ Started: Sun May 24 01:24:48 CST 2026
   - `ApiKeyInput.vue` is a reusable component — use `v-model` binding with show/hide toggle (蓝色文字按钮)
   - On H5, uni.getStorageSync is used (maps to localStorage); native plugins (Android Keystore / iOS Keychain) can be swapped in later without changing the service API
 ---
+
+## Sun May 24 02:30:00 CST 2026 - US-006
+- Implemented AI API direct connection with SSE streaming support
+- **Files changed:** src/types/index.ts (added ChatMessage, ActivePlatformConfig, DEFAULT_SYSTEM_PROMPT), src/utils/ai-api.ts (new)
+- `src/utils/ai-api.ts` exports: `chatCompletionStream` (SSE streaming for H5), `chatCompletion` (non-streaming cross-platform fallback via uni.request), `isConfigured`
+- Streaming uses `fetch` + `ReadableStream` on H5; non-streaming uses `uni.request` for mini-program/native compatibility
+- API Key read from `apiKeyService`, platform config from `settingService` + `aiPlatformService`, system prompt from `settingService` with `DEFAULT_SYSTEM_PROMPT` fallback
+- All logs use `redactApiKey()` to prevent key leakage
+- `chatCompletionStream` returns an abort function for cancellation
+- **Learnings for future iterations:**
+  - SSE streaming only works in H5 (uses fetch ReadableStream); other platforms need uni.request fallback
+  - `buildUrl()` handles both `baseUrl` with and without trailing `/chat/completions`
+  - The system prompt (`DEFAULT_SYSTEM_PROMPT`) instructs AI to return JSON in a code block after natural language response
+  - Active platform config stored as JSON string in settings under `platform_config` key
+---
