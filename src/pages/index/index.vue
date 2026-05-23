@@ -85,6 +85,8 @@
 import { ref, computed, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { chatCompletionStream, chatCompletion, isConfigured } from '@/utils/ai-api'
+import { extractExpenses } from '@/utils/expense-parser'
+import { expenseService } from '@/store/expenses'
 import { settingService } from '@/store/settings'
 import { SettingKeys, type ChatMessage } from '@/types'
 
@@ -132,6 +134,25 @@ function makeId(): string {
 const canSend = computed(() => {
   return inputText.value.trim().length > 0 && !isStreaming.value
 })
+
+/**
+ * 从 AI 回复文本中提取记账数据并保存到本地
+ * 保存成功后显示 toast 提示
+ */
+function saveExpensesFromText(text: string) {
+  const parsed = extractExpenses(text)
+  if (parsed.length === 0) return
+
+  for (const item of parsed) {
+    expenseService.add(item)
+  }
+
+  const summary = parsed.length === 1
+    ? `已记录：${parsed[0].category} ¥${parsed[0].amount}`
+    : `已记录 ${parsed.length} 笔消费`
+
+  uni.showToast({ title: summary, icon: 'success', duration: 2000 })
+}
 
 function scrollToBottom() {
   nextTick(() => {
@@ -185,6 +206,7 @@ async function handleSend() {
         }
       },
       onComplete(fullText: string) {
+        saveExpensesFromText(fullText)
         isStreaming.value = false
         scrollToBottom()
       },
@@ -201,6 +223,7 @@ async function handleSend() {
     // Fallback to non-streaming for non-H5 environments
     try {
       const response = await chatCompletion(chatMessages)
+      saveExpensesFromText(response)
       const aiMsg: UiMessage = {
         id: makeId(),
         role: 'assistant',

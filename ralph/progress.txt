@@ -154,3 +154,39 @@ Started: Sun May 24 01:24:48 CST 2026
   - `confirm-type="send"` on input triggers `@confirm` on keyboard Enter
   - Browser verification skipped — no Playwright Chrome in environment
 ---
+
+## Sat May 24 03:45:00 CST 2026 - US-011
+- Added avatar and nickname customization for both user and AI assistant
+- **Files changed:** src/pages/settings/settings.vue (added 2 profile sections), src/pages/index/index.vue (added onShow hook for profile reload)
+- Features:
+  - 「个人资料」section: user avatar picker (album/camera via uni.chooseImage) + nickname input with save button
+  - 「AI 助手」section: AI avatar picker + nickname input with save button
+  - Avatars stored as file paths in settingService (USER_AVATAR, AI_AVATAR keys)
+  - Nicknames stored as strings (USER_NICKNAME, AI_NICKNAME keys)
+  - Chat page uses onShow lifecycle hook to reload profile when returning from settings tab
+  - Defaults: user avatar → /static/logo.png, nickname → '我'; AI avatar → /static/logo.png, nickname → '小记'
+- **Learnings for future iterations:**
+  - UniApp tabBar pages don't remount on tab switch — use `onShow` from `@dcloudio/uni-app` to reload data when tab becomes visible
+  - `onShow` must be imported from `@dcloudio/uni-app`, not from `vue` — other Vue APIs (ref, computed, etc.) stay imported from `vue`
+  - `uni.chooseImage` works on tabBar pages and returns tempFilePaths; for production, consider `uni.saveFile` for persistent storage
+  - Avatar images use `mode="aspectFill"` for proper circular crop display
+  - Browser verification skipped — no Playwright Chrome in environment
+---
+
+## Sat May 24 04:00:00 CST 2026 - US-012
+- Implemented AI response parsing to extract and save expense data from chat
+- **Files changed:** src/utils/expense-parser.ts (new), src/pages/index/index.vue (added expense extraction)
+- Features:
+  - New `extractExpenses()` utility parses JSON code blocks from AI responses
+  - Regex extracts ```json ... ``` blocks, parses the `expenses` array
+  - Each parsed expense validated: amount > 0, category required, date defaults to today
+  - `saveExpensesFromText()` called in both streaming onComplete and non-streaming fallback
+  - Toast notification shows summary: single expense shows category + amount, multiple shows count
+  - Supports multi-entry parsing (AI can return multiple expenses in one response)
+- **Learnings for future iterations:**
+  - AI system prompt (DEFAULT_SYSTEM_PROMPT) instructs AI to append ```json {"expenses": [...]}``` block at end of response
+  - Parser uses regex to find all JSON blocks — handles multiple blocks if AI returns them
+  - `expenseService.add()` auto-generates UUID and created_at timestamp
+  - Parser is a pure function with no side effects — easy to test independently
+  - Browser verification skipped — no Playwright Chrome in environment
+---
