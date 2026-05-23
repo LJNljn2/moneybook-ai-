@@ -20,6 +20,14 @@ Started: Sun May 24 01:24:48 CST 2026
   - `crypto.randomUUID()` used for IDs — available in H5 and modern mobile environments
 ---
 
+## Sun May 24 01:40:00 CST 2026 - US-003
+- Wired up `categoryService.initDefaults()` in App.vue `onLaunch` hook so default categories auto-seed on first launch
+- **Files changed:** src/App.vue
+- **Learnings for future iterations:**
+  - App startup logic goes in `onLaunch` hook in App.vue (UniApp lifecycle)
+  - The `initDefaults()` was already implemented in US-002; this story just needed the call site
+---
+
 ## Sun May 24 01:30:00 CST 2026 - US-001
 - Initialized UniApp (Vue3 + Vite + TypeScript) project from official template
 - Created directory structure: src/pages/, src/components/, src/utils/, src/store/
@@ -32,4 +40,15 @@ Started: Sun May 24 01:24:48 CST 2026
   - UniApp project uses `createSSRApp` in main.ts, not standard `createApp`
   - Pages are defined in pages.json, not vue-router
   - `vue-tsc --noEmit` is the typecheck command
+---
+
+## Sun May 24 02:00:00 CST 2026 - US-004
+- Added AI platform types and built-in platform presets service
+- **Files changed:** src/types/index.ts (added AiPlatform interface), src/store/ai-platforms.ts (new)
+- Built-in platforms: OpenAI, 通义千问, DeepSeek, 智谱 GLM, Kimi (Moonshot) — each with pre-filled Base URL and model list
+- Custom platform support with add/edit/delete CRUD operations
+- **Learnings for future iterations:**
+  - Platform config stored separately from settings (its own storage key `ai_platforms`) — built-in presets are not persisted, only custom platforms are
+  - `getAllPlatforms()` merges built-in + custom at runtime
+  - Custom platform IDs use `custom_<timestamp>` prefix pattern
 ---

@@ -36,3 +36,12 @@ export const SettingKeys = {
 } as const
 
 export type SettingKey = typeof SettingKeys[keyof typeof SettingKeys]
+
+/** AI 平台配置 */
+export interface AiPlatform {
+  id: string
+  name: string
+  baseUrl: string
+  models: string[] // 可选模型列表
+  isCustom: boolean // 是否用户自定义
+}
