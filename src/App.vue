@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
+import { categoryService } from "./store/categories";
 onLaunch(() => {
+  categoryService.initDefaults();
   console.log("App Launch");
 });
 onShow(() => {
