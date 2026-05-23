@@ -83,6 +83,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { chatCompletionStream, chatCompletion, isConfigured } from '@/utils/ai-api'
 import { settingService } from '@/store/settings'
 import { SettingKeys, type ChatMessage } from '@/types'
@@ -118,6 +119,10 @@ function loadProfile() {
 }
 
 loadProfile()
+
+onShow(() => {
+  loadProfile()
+})
 
 let idCounter = 0
 function makeId(): string {

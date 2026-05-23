@@ -7,6 +7,17 @@ import { apiKeyService } from '../../store/api-keys'
 import { settingService } from '../../store/settings'
 import ApiKeyInput from '../../components/ApiKeyInput.vue'
 
+// Profile state
+const DEFAULT_USER_AVATAR = '/static/logo.png'
+const DEFAULT_AI_AVATAR = '/static/logo.png'
+const DEFAULT_USER_NICKNAME = '我'
+const DEFAULT_AI_NICKNAME = '小记'
+
+const userAvatar = ref(DEFAULT_USER_AVATAR)
+const userNickname = ref(DEFAULT_USER_NICKNAME)
+const aiAvatar = ref(DEFAULT_AI_AVATAR)
+const aiNickname = ref(DEFAULT_AI_NICKNAME)
+
 const platforms = ref<AiPlatform[]>([])
 const selectedPlatformId = ref('')
 const selectedModel = ref('')
@@ -53,6 +64,16 @@ function loadData() {
 
   // Load system prompt
   systemPrompt.value = settingService.get(SettingKeys.SYSTEM_PROMPT) ?? DEFAULT_SYSTEM_PROMPT
+
+  // Load profile
+  const ua = settingService.get(SettingKeys.USER_AVATAR)
+  if (ua) userAvatar.value = ua
+  const un = settingService.get(SettingKeys.USER_NICKNAME)
+  if (un) userNickname.value = un
+  const aa = settingService.get(SettingKeys.AI_AVATAR)
+  if (aa) aiAvatar.value = aa
+  const an = settingService.get(SettingKeys.AI_NICKNAME)
+  if (an) aiNickname.value = an
 
   loadPlatformDetails()
 }
@@ -201,6 +222,43 @@ function resetSystemPrompt() {
   })
 }
 
+function chooseAvatar(type: 'user' | 'ai') {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success(res) {
+      const tempPath = res.tempFilePaths[0]
+      if (type === 'user') {
+        userAvatar.value = tempPath
+        settingService.set(SettingKeys.USER_AVATAR, tempPath)
+      } else {
+        aiAvatar.value = tempPath
+        settingService.set(SettingKeys.AI_AVATAR, tempPath)
+      }
+      uni.showToast({ title: '头像已更新', icon: 'success' })
+    },
+  })
+}
+
+function saveUserNickname() {
+  if (!userNickname.value.trim()) {
+    uni.showToast({ title: '昵称不能为空', icon: 'none' })
+    return
+  }
+  settingService.set(SettingKeys.USER_NICKNAME, userNickname.value.trim())
+  uni.showToast({ title: '已保存', icon: 'success' })
+}
+
+function saveAiNickname() {
+  if (!aiNickname.value.trim()) {
+    uni.showToast({ title: '昵称不能为空', icon: 'none' })
+    return
+  }
+  settingService.set(SettingKeys.AI_NICKNAME, aiNickname.value.trim())
+  uni.showToast({ title: '已保存', icon: 'success' })
+}
+
 onMounted(() => {
   loadData()
 })
@@ -208,6 +266,60 @@ onMounted(() => {
 
 <template>
   <scroll-view class="settings-page" scroll-y>
+    <!-- Personal Profile Section -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">个人资料</text>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">头像</text>
+        <view class="avatar-row" @click="chooseAvatar('user')">
+          <image class="avatar-preview" :src="userAvatar" mode="aspectFill" />
+          <text class="avatar-hint">点击更换头像</text>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">昵称</text>
+        <view class="nickname-row">
+          <input
+            class="form-input nickname-input"
+            v-model="userNickname"
+            placeholder="请输入昵称"
+          />
+          <view class="btn-save-nickname" @click="saveUserNickname">保存</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- AI Assistant Section -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">AI 助手</text>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">头像</text>
+        <view class="avatar-row" @click="chooseAvatar('ai')">
+          <image class="avatar-preview" :src="aiAvatar" mode="aspectFill" />
+          <text class="avatar-hint">点击更换头像</text>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">昵称</text>
+        <view class="nickname-row">
+          <input
+            class="form-input nickname-input"
+            v-model="aiNickname"
+            placeholder="请输入 AI 昵称"
+          />
+          <view class="btn-save-nickname" @click="saveAiNickname">保存</view>
+        </view>
+      </view>
+    </view>
+
     <!-- Model Config Section -->
     <view class="section">
       <view class="section-header">
@@ -530,5 +642,45 @@ onMounted(() => {
 
 .btn-reset:active {
   opacity: 0.8;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 16rpx 0;
+}
+
+.avatar-preview {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  border: 2rpx solid #eee;
+}
+
+.avatar-hint {
+  font-size: 26rpx;
+  color: #2b7cff;
+}
+
+.nickname-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.nickname-input {
+  flex: 1;
+}
+
+.btn-save-nickname {
+  flex-shrink: 0;
+  background-color: #2b7cff;
+  color: #fff;
+  font-size: 26rpx;
+  border-radius: 8rpx;
+  padding: 14rpx 28rpx;
+  text-align: center;
+  line-height: 1.4;
 }
 </style>
