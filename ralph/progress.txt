@@ -9,6 +9,17 @@ Started: Sun May 24 01:24:48 CST 2026
 - Page routing configured in `src/pages.json` (not vue-router)
 ---
 
+## Sun May 24 01:35:00 CST 2026 - US-002
+- Created local data storage layer with TypeScript types and CRUD services
+- **Files changed:** src/types/index.ts (new), src/utils/storage.ts (new), src/store/expenses.ts (new), src/store/categories.ts (new), src/store/settings.ts (new)
+- Removed placeholder .gitkeep files from src/store/ and src/utils/
+- **Learnings for future iterations:**
+  - Storage uses `uni.getStorageSync`/`setStorageSync` — works cross-platform (H5 localStorage, App native storage)
+  - Categories service has `initDefaults()` method that seeds 8 default categories on first use
+  - Settings stored as key-value pairs in an array, accessed by key string
+  - `crypto.randomUUID()` used for IDs — available in H5 and modern mobile environments
+---
+
 ## Sun May 24 01:30:00 CST 2026 - US-001
 - Initialized UniApp (Vue3 + Vite + TypeScript) project from official template
 - Created directory structure: src/pages/, src/components/, src/utils/, src/store/
