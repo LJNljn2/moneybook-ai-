@@ -190,3 +190,41 @@ Started: Sun May 24 01:24:48 CST 2026
   - Parser is a pure function with no side effects — easy to test independently
   - Browser verification skipped — no Playwright Chrome in environment
 ---
+
+## Sat May 24 04:15:00 CST 2026 - US-013
+- Implemented AI context injection with recent expense data for smart replies
+- **Files changed:** src/utils/expense-parser.ts (added buildRecentExpenseSummary), src/pages/index/index.vue (inject expense summary), src/types/index.ts (updated system prompt)
+- Features:
+  - buildRecentExpenseSummary() generates a natural language summary of the last 7 days of expenses
+  - Summary includes total amount and category breakdown (e.g. "消费共 ¥520，明细：餐饮 ¥280、交通 ¥150、购物 ¥90")
+  - Before each AI request, summary is prepended to the user message as [消费数据上下文]
+  - System prompt updated: AI instructed to use expense data for commentary and billing questions
+  - System prompt tells AI to not mention the [消费数据上下文] marker in replies
+  - AI can now give informed replies like "这周你花了 520 块，主要是餐饮和交通"
+- **Learnings for future iterations:**
+  - Expense context is injected per-request, not stored in conversation history — keeps it fresh and avoids stale data
+  - buildRecentExpenseSummary is a pure function, easy to test independently
+  - The enriched message format "[消费数据上下文] {summary}\n\n用户消息：{text}" keeps the user's actual message separate for the AI
+  - expenseService.getAll() called fresh each request to get latest data including just-saved expenses
+  - Browser verification skipped — no Playwright Chrome in environment
+---
+
+## Sat May 24 04:30:00 CST 2026 - US-014
+- Implemented first-time user onboarding guide with conversational flow
+- **Files changed:** src/pages/index/index.vue (added onboarding logic), src/pages/settings/settings.vue (added re-trigger button)
+- Features:
+  - On first launch (ONBOARDING_DONE not set), AI sends welcome message asking for user's name
+  - Guided flow: welcome → ask name (stores to USER_NICKNAME) → ask monthly budget (stores to MONTHLY_BUDGET) → show usage tips
+  - Onboarding handled locally without AI API calls — no configuration needed for onboarding
+  - During onboarding, user input is intercepted by handleOnboardingInput instead of sent to AI
+  - After completion, ONBOARDING_DONE is set to 'true' to prevent re-triggering
+  - Settings page has "新手引导" section with "重新引导" button that clears ONBOARDING_DONE and navigates to chat
+  - Budget input parsed via regex — if user says text without numbers, skips budget gracefully
+  - The onboarding step type: OnboardingStep = 'idle' | 'welcome' | 'name' | 'budget' | 'done'
+- **Learnings for future iterations:**
+  - Onboarding is embedded in the chat UI as a state machine, not a separate page — keeps it simple and avoids extra routes
+  - Onboarding works even when AI is not configured (no API key needed) since it's handled locally
+  - The onboarding check runs in onShow so it also triggers when returning from settings via re-trigger
+  - Guard condition: `!done && messages.value.length === 0 && onboardingStep.value === 'idle'` prevents re-triggering on tab switch
+  - Browser verification skipped — no Playwright Chrome in environment
+---

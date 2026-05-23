@@ -222,6 +222,19 @@ function resetSystemPrompt() {
   })
 }
 
+function retriggerOnboarding() {
+  uni.showModal({
+    title: '重新引导',
+    content: '将清除引导完成标记，返回对话页后会重新开始引导流程。确定继续吗？',
+    success(res) {
+      if (res.confirm) {
+        settingService.remove(SettingKeys.ONBOARDING_DONE)
+        uni.switchTab({ url: '/pages/index/index' })
+      }
+    },
+  })
+}
+
 function chooseAvatar(type: 'user' | 'ai') {
   uni.chooseImage({
     count: 1,
@@ -435,6 +448,17 @@ onMounted(() => {
       <view class="actions">
         <button class="btn-save" @click="saveSystemPrompt">保存提示词</button>
         <button class="btn-reset" @click="resetSystemPrompt">恢复默认</button>
+      </view>
+    </view>
+
+    <!-- Onboarding Section -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">新手引导</text>
+      </view>
+      <text class="form-label">如果你希望重新体验首次使用的引导流程，可以点击下方按钮重新开始。</text>
+      <view class="actions">
+        <button class="btn-save" @click="retriggerOnboarding">重新引导</button>
       </view>
     </view>
 

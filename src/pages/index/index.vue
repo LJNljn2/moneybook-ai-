@@ -96,6 +96,8 @@ interface UiMessage {
   content: string
 }
 
+type OnboardingStep = 'idle' | 'welcome' | 'name' | 'budget' | 'done'
+
 const messages = ref<UiMessage[]>([])
 const inputText = ref('')
 const isStreaming = ref(false)
@@ -109,6 +111,10 @@ const aiAvatar = ref(DEFAULT_AI_AVATAR)
 const userNickname = ref('我')
 const aiNickname = ref('小记')
 
+// Onboarding state
+const onboardingStep = ref<OnboardingStep>('idle')
+const onboardingName = ref('')
+
 function loadProfile() {
   const ua = settingService.get(SettingKeys.USER_AVATAR)
   if (ua) userAvatar.value = ua
@@ -120,10 +126,82 @@ function loadProfile() {
   if (an) aiNickname.value = an
 }
 
+function addAiMessage(content: string) {
+  messages.value.push({
+    id: makeId(),
+    role: 'assistant',
+    content,
+  })
+  scrollToBottom()
+}
+
+function startOnboarding() {
+  onboardingStep.value = 'welcome'
+  addAiMessage(
+    '你好呀！我是你的智能记账助手「小记」～\n\n' +
+    '我会帮你轻松记录每一笔消费，还能分析你的花钱习惯，做你的贴心财务小管家。\n\n' +
+    '先来认识一下吧！你希望我怎么称呼你呢？'
+  )
+}
+
+function handleOnboardingInput(text: string) {
+  switch (onboardingStep.value) {
+    case 'welcome': {
+      // User tells us their name
+      const name = text.trim()
+      if (!name) return
+      onboardingName.value = name
+      settingService.set(SettingKeys.USER_NICKNAME, name)
+      userNickname.value = name
+      onboardingStep.value = 'name'
+      addAiMessage(
+        `好的，${name}！以后就这么叫你啦～\n\n` +
+        '你有每月的预算计划吗？告诉我一个数字，我帮你追踪预算（比如「3000」）。如果暂时没有，直接说「没有」就好。'
+      )
+      break
+    }
+    case 'name': {
+      // User tells us their budget
+      const budgetMatch = text.match(/\d+/)
+      if (budgetMatch) {
+        const budget = budgetMatch[0]
+        settingService.set(SettingKeys.MONTHLY_BUDGET, budget)
+        onboardingStep.value = 'budget'
+        addAiMessage(
+          `收到！月预算设为 ¥${budget}，我会帮你盯着的。\n\n` +
+          '现在你可以开始记账啦！直接跟我说花了什么就行，比如：\n' +
+          '「午饭花了 35 块」\n' +
+          '「打车 25，咖啡 18」\n\n' +
+          '我会自动帮你分类记录，随时问我「这周花了多少」也行哦～开始试试吧！'
+        )
+      } else {
+        // No budget
+        onboardingStep.value = 'budget'
+        addAiMessage(
+          '没问题，不设预算也行！\n\n' +
+          '现在你可以开始记账啦！直接跟我说花了什么就行，比如：\n' +
+          '「午饭花了 35 块」\n' +
+          '「打车 25，咖啡 18」\n\n' +
+          '我会自动帮你分类记录，随时问我「这周花了多少」也行哦～开始试试吧！'
+        )
+      }
+      // Onboarding complete
+      settingService.set(SettingKeys.ONBOARDING_DONE, 'true')
+      onboardingStep.value = 'done'
+      break
+    }
+  }
+}
+
 loadProfile()
 
 onShow(() => {
   loadProfile()
+  // Check if onboarding is needed (first launch)
+  const done = settingService.get(SettingKeys.ONBOARDING_DONE)
+  if (!done && messages.value.length === 0 && onboardingStep.value === 'idle') {
+    startOnboarding()
+  }
 })
 
 let idCounter = 0
@@ -165,6 +243,21 @@ async function handleSend() {
   const text = inputText.value.trim()
   if (!text || isStreaming.value) return
 
+  inputText.value = ''
+
+  // During onboarding, handle locally without AI API
+  if (onboardingStep.value !== 'idle' && onboardingStep.value !== 'done') {
+    const userMsg: UiMessage = {
+      id: makeId(),
+      role: 'user',
+      content: text,
+    }
+    messages.value.push(userMsg)
+    scrollToBottom()
+    handleOnboardingInput(text)
+    return
+  }
+
   if (!isConfigured()) {
     uni.showModal({
       title: '未配置 AI',
@@ -173,8 +266,6 @@ async function handleSend() {
     })
     return
   }
-
-  inputText.value = ''
 
   const userMsg: UiMessage = {
     id: makeId(),
