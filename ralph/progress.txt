@@ -1,0 +1,24 @@
+# Ralph Progress Log
+Started: Sun May 24 01:24:48 CST 2026
+
+## Codebase Patterns
+- UniApp (Vue3 + Vite + TypeScript) project scaffolded from `dcloudio/uni-preset-vue#vite-ts`
+- Use `npm run type-check` for TypeScript validation (`vue-tsc --noEmit`)
+- Use `npm run dev:h5` for H5 dev server, `npm run build:h5` for production build
+- Project uses `src/` as source root with `pages/`, `components/`, `utils/`, `store/` directories
+- Page routing configured in `src/pages.json` (not vue-router)
+---
+
+## Sun May 24 01:30:00 CST 2026 - US-001
+- Initialized UniApp (Vue3 + Vite + TypeScript) project from official template
+- Created directory structure: src/pages/, src/components/, src/utils/, src/store/
+- Updated package.json name to "moneychat" v0.1.0
+- Updated pages.json with app title "MoneyChat" and page title "对话记账"
+- Added `unpackage` to .gitignore (uni-app build output)
+- Typecheck passes, H5 build succeeds
+- **Files changed:** package.json, src/pages.json, .gitignore, all scaffold files (src/, index.html, tsconfig.json, vite.config.ts, shims-uni.d.ts)
+- **Learnings for future iterations:**
+  - UniApp project uses `createSSRApp` in main.ts, not standard `createApp`
+  - Pages are defined in pages.json, not vue-router
+  - `vue-tsc --noEmit` is the typecheck command
+---
