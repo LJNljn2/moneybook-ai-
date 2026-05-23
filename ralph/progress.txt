@@ -52,3 +52,14 @@ Started: Sun May 24 01:24:48 CST 2026
   - `getAllPlatforms()` merges built-in + custom at runtime
   - Custom platform IDs use `custom_<timestamp>` prefix pattern
 ---
+
+## Sun May 24 02:15:00 CST 2026 - US-005
+- Implemented secure API key storage, masked input component, and log redaction utility
+- **Files changed:** src/store/api-keys.ts (new), src/components/ApiKeyInput.vue (new), src/utils/redact.ts (new), src/types/index.ts (added API_KEYS setting key), src/components/.gitkeep (deleted)
+- **Learnings for future iterations:**
+  - API keys stored per-platform in a separate `api_keys` storage key (Record<platformId, apiKey>), not mixed into platform config
+  - `apiKeyService.getMasked()` returns `****xxxx` format for safe display
+  - `redactApiKey()` and `redactObject()` utilities in src/utils/redact.ts for stripping API keys from logs and objects before output
+  - `ApiKeyInput.vue` is a reusable component — use `v-model` binding with show/hide toggle (蓝色文字按钮)
+  - On H5, uni.getStorageSync is used (maps to localStorage); native plugins (Android Keystore / iOS Keychain) can be swapped in later without changing the service API
+---
