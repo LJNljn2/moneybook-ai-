@@ -62,6 +62,11 @@
     </scroll-view>
 
     <view class="input-area">
+      <view class="input-left">
+        <view class="new-chat-btn" @tap="clearContext" v-if="messages.length > 0">
+          <text class="new-chat-btn-text">新对话</text>
+        </view>
+      </view>
       <input
         class="input-box"
         v-model="inputText"
@@ -239,6 +244,15 @@ function scrollToBottom() {
   })
 }
 
+/**
+ * 清除对话上下文（UI 消息列表）
+ * 记账数据不受影响，持久保存在本地数据库
+ */
+function clearContext() {
+  messages.value = []
+  scrollTop.value = 0
+}
+
 async function handleSend() {
   const text = inputText.value.trim()
   if (!text || isStreaming.value) return
@@ -305,6 +319,8 @@ async function handleSend() {
         saveExpensesFromText(fullText)
         isStreaming.value = false
         scrollToBottom()
+        // 一轮对话结束，自动清除上下文（记账数据不受影响）
+        setTimeout(() => clearContext(), 1500)
       },
       onError(err: Error) {
         isStreaming.value = false
@@ -328,6 +344,8 @@ async function handleSend() {
       messages.value.push(aiMsg)
       isStreaming.value = false
       scrollToBottom()
+      // 一轮对话结束，自动清除上下文（记账数据不受影响）
+      setTimeout(() => clearContext(), 1500)
     } catch (err: any) {
       isStreaming.value = false
       messages.value.push({
@@ -459,6 +477,26 @@ async function handleSend() {
   padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   background-color: #fff;
   border-top: 1rpx solid #eee;
+}
+
+.input-left {
+  flex-shrink: 0;
+  margin-right: 12rpx;
+}
+
+.new-chat-btn {
+  height: 72rpx;
+  padding: 0 20rpx;
+  background-color: #f0f0f0;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-chat-btn-text {
+  font-size: 24rpx;
+  color: #666;
 }
 
 .input-box {
