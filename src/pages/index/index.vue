@@ -85,7 +85,7 @@
 import { ref, computed, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { chatCompletionStream, chatCompletion, isConfigured } from '@/utils/ai-api'
-import { extractExpenses } from '@/utils/expense-parser'
+import { extractExpenses, buildRecentExpenseSummary } from '@/utils/expense-parser'
 import { expenseService } from '@/store/expenses'
 import { settingService } from '@/store/settings'
 import { SettingKeys, type ChatMessage } from '@/types'
@@ -186,7 +186,12 @@ async function handleSend() {
 
   isStreaming.value = true
 
-  const chatMessages: ChatMessage[] = [{ role: 'user', content: text }]
+  // Build recent expense summary for AI context
+  const allExpenses = expenseService.getAll()
+  const expenseSummary = buildRecentExpenseSummary(allExpenses)
+  const enrichedText = `[消费数据上下文] ${expenseSummary}\n\n用户消息：${text}`
+
+  const chatMessages: ChatMessage[] = [{ role: 'user', content: enrichedText }]
 
   // Try streaming first (H5), fallback to non-streaming
   try {

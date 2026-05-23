@@ -39,6 +39,34 @@ export function extractExpenses(text: string): ParsedExpense[] {
 }
 
 /**
+ * 构建最近 N 天的消费摘要，用于注入 AI 请求上下文
+ * 返回一段自然语言描述，包含总金额和分类分布
+ */
+export function buildRecentExpenseSummary(expenses: import('../types').Expense[], days = 7): string {
+  const now = new Date()
+  const start = new Date(now)
+  start.setDate(start.getDate() - days + 1)
+  const startStr = start.toISOString().slice(0, 10)
+  const endStr = now.toISOString().slice(0, 10)
+
+  const recent = expenses.filter(e => e.date >= startStr && e.date <= endStr)
+  if (recent.length === 0) {
+    return `用户最近 ${days} 天（${startStr} ~ ${endStr}）没有消费记录。`
+  }
+
+  const total = recent.reduce((sum, e) => sum + e.amount, 0)
+  const byCategory: Record<string, number> = {}
+  for (const e of recent) {
+    byCategory[e.category] = (byCategory[e.category] || 0) + e.amount
+  }
+
+  const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
+  const breakdown = sorted.map(([cat, amt]) => `${cat} ¥${amt}`).join('、')
+
+  return `用户最近 ${days} 天（${startStr} ~ ${endStr}）消费共 ¥${total}，明细：${breakdown}。`
+}
+
+/**
  * 标准化单条记账数据，返回 null 表示无效
  */
 function normalizeExpense(item: Record<string, unknown>): ParsedExpense | null {
