@@ -308,8 +308,8 @@
         "Typecheck passes"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Export button in summary bar, exports currently filtered data (respects date range + category filter). On H5, triggers browser download via xlsx.writeFile."
     },
     {
       "id": "US-021",

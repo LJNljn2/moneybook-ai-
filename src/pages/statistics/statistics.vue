@@ -107,6 +107,9 @@
       <text class="summary-text">
         共 {{ filteredExpenses.length }} 笔，合计 ¥{{ totalAmount.toFixed(2) }}
       </text>
+      <view class="export-btn" @tap="handleExport" v-if="filteredExpenses.length > 0">
+        <text class="export-btn-text">导出 Excel</text>
+      </view>
     </view>
 
     <!-- Expense list -->
@@ -158,6 +161,7 @@ import { categoryService } from '@/store/categories'
 import type { Expense, Category } from '@/types'
 import PieChart from '@/components/PieChart.vue'
 import BarChart from '@/components/BarChart.vue'
+import { exportToExcel } from '@/utils/export'
 
 type DateTab = 'today' | 'week' | 'month' | 'all'
 type ChartRange = 'month' | '3months' | '6months' | 'custom'
@@ -444,6 +448,18 @@ function getWeekKey(dateStr: string): string {
   return monday.toISOString().slice(0, 10)
 }
 
+function handleExport() {
+  if (filteredExpenses.value.length === 0) {
+    uni.showToast({ title: '暂无数据可导出', icon: 'none' })
+    return
+  }
+  const now = new Date()
+  const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  const filename = `MoneyChat_${ts}`
+  exportToExcel(filteredExpenses.value, filename)
+  uni.showToast({ title: '导出成功', icon: 'success' })
+}
+
 function getCategoryIcon(categoryName: string): string {
   const cat = categories.value.find(c => c.name === categoryName)
   return cat?.icon || '📌'
@@ -695,11 +711,26 @@ function handleDelete(expense: Expense) {
 /* Summary bar */
 .summary-bar {
   padding: 16rpx 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .summary-text {
   font-size: 26rpx;
   color: #999;
+}
+
+.export-btn {
+  padding: 8rpx 20rpx;
+  background-color: #2b7cff;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+}
+
+.export-btn-text {
+  font-size: 24rpx;
+  color: #fff;
 }
 
 .expense-list {

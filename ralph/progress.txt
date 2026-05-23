@@ -331,3 +331,21 @@ Started: Sun May 24 01:24:48 CST 2026
   - Chart data computation (`chartExpenses`) uses `getChartDateRange()` which is separate from `getDateRange()` for the list — allows charts and list to show different time ranges independently
   - Browser verification skipped — no Playwright Chrome in environment
 ---
+
+## Sat May 24 06:00:00 CST 2026 - US-020
+- Implemented Excel export feature with SheetJS (xlsx) library
+- **Files changed:** src/utils/export.ts (new), src/pages/statistics/statistics.vue (added export button + handler), package.json (added xlsx dependency)
+- Features:
+  - "导出 Excel" button added to the summary bar, only visible when there are filtered expenses
+  - Exports currently filtered data (respects active date tab + category filter selections)
+  - Export file contains columns: 日期, 分类, 金额, 备注
+  - Filename format: MoneyChat_YYYYMMDD.xlsx
+  - On H5, triggers browser download via XLSX.writeFile
+  - Shows toast on success
+- **Learnings for future iterations:**
+  - xlsx (SheetJS) works well in UniApp H5 — generates xlsx in-browser without server
+  - XLSX.writeFile handles Blob creation and download link internally for H5
+  - Export uses filteredExpenses (already sorted by date desc) — matches what user sees on screen
+  - Column widths set explicitly via ws['!cols'] for readability
+  - Browser verification skipped — no Playwright Chrome in environment
+---
