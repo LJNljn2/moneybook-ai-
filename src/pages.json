@@ -5,6 +5,12 @@
 			"style": {
 				"navigationBarTitleText": "对话记账"
 			}
+		},
+		{
+			"path": "pages/settings/settings",
+			"style": {
+				"navigationBarTitleText": "设置"
+			}
 		}
 	],
 	"globalStyle": {

@@ -2,14 +2,16 @@
   <view class="content">
     <image class="logo" src="/static/logo.png" />
     <view class="text-area">
-      <text class="title">{{ title }}</text>
+      <text class="title">MoneyChat</text>
     </view>
+    <button class="nav-btn" @click="goToSettings">设置</button>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-const title = ref('Hello')
+function goToSettings() {
+  uni.navigateTo({ url: '/pages/settings/settings' })
+}
 </script>
 
 <style>
@@ -32,10 +34,20 @@ const title = ref('Hello')
 .text-area {
   display: flex;
   justify-content: center;
+  margin-bottom: 40rpx;
 }
 
 .title {
   font-size: 36rpx;
-  color: #8f8f94;
+  color: #333;
+}
+
+.nav-btn {
+  background-color: #2b7cff;
+  color: #fff;
+  font-size: 30rpx;
+  border-radius: 12rpx;
+  padding: 0 60rpx;
+  line-height: 88rpx;
 }
 </style>

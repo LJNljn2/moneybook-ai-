@@ -78,3 +78,23 @@ Started: Sun May 24 01:24:48 CST 2026
   - The system prompt (`DEFAULT_SYSTEM_PROMPT`) instructs AI to return JSON in a code block after natural language response
   - Active platform config stored as JSON string in settings under `platform_config` key
 ---
+
+## Sun May 24 02:45:00 CST 2026 - US-007
+- Created Settings page with model configuration UI
+- **Files changed:** src/pages/settings/settings.vue (new), src/pages/index/index.vue (updated with nav button), src/pages.json (added settings route)
+- Settings page features:
+  - Platform picker (all built-in + custom platforms)
+  - Model picker for built-in platforms with preset models
+  - Custom platform fields: name, Base URL, model names (comma-separated)
+  - API Key input using existing ApiKeyInput component with masked display hint
+  - Save button persists platform config, API key, and custom platform changes to local storage
+  - Add custom platform section with expandable form
+  - Delete button for custom platforms (with confirmation modal)
+- Added navigation button on index page to reach settings (temporary until US-009 tab bar)
+- **Learnings for future iterations:**
+  - Settings page reads active config from `settingService.get(PLATFORM_CONFIG)` as JSON string of `ActivePlatformConfig`
+  - Custom platforms editable inline (name, baseUrl, models) when selected; built-in platforms show read-only base URL
+  - API key storage is per-platform via `apiKeyService`, separate from platform config
+  - Changes save to local storage immediately on button press — no "apply" step needed, already effective next AI call
+  - `picker` component in UniApp uses index-based value, not direct value binding
+---
