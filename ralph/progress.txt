@@ -7,6 +7,9 @@ Started: Sun May 24 01:24:48 CST 2026
 - Use `npm run dev:h5` for H5 dev server, `npm run build:h5` for production build
 - Project uses `src/` as source root with `pages/`, `components/`, `utils/`, `store/` directories
 - Page routing configured in `src/pages.json` (not vue-router)
+- Chat UI uses scroll-view with `scrollTop` bound to a ref; set to large value to scroll to bottom
+- AI streaming: `chatCompletionStream` for H5, `chatCompletion` fallback for other platforms
+- On non-tabBar pages, use `uni.navigateTo`; on tabBar pages, use `uni.switchTab`
 ---
 
 ## Sun May 24 01:35:00 CST 2026 - US-002
@@ -128,4 +131,26 @@ Started: Sun May 24 01:24:48 CST 2026
   - Icon images must be PNG/JPG, not SVG — UniApp doesn't support SVG for tabBar icons
   - When adding a tabBar, the page order in `pages` array matters less, but tabBar `list` order determines tab display order
   - Browser verification skipped — no Playwright chrome available in this environment
+---
+
+## Sat May 24 03:30:00 CST 2026 - US-010
+- Built the chat interface on the index page with full bubble UI
+- **Files changed:** src/pages/index/index.vue (replaced placeholder with chat UI)
+- Features:
+  - User message bubbles: right-aligned, blue (#2B7CFF) background, white text
+  - AI message bubbles: left-aligned, white background with border, dark text
+  - Avatar (圆形) and nickname displayed above each bubble
+  - Bottom fixed input area with text input and blue send button
+  - Empty state with title "开始记账吧" and usage hint
+  - Streaming support with "正在思考..." typing indicator
+  - Auto-scroll to bottom on new messages
+  - Config check: shows modal if AI platform not configured
+  - Non-streaming fallback via chatCompletion() for non-H5 environments
+  - Disables input while streaming to prevent concurrent requests
+- **Learnings for future iterations:**
+  - `scrollTop` trick: set to large value (`messages.length * 2000`) to force scroll-to-bottom in scroll-view
+  - `chatCompletionStream` returns abort function; `onError` callback takes `Error` type, not `string`
+  - UniApp `scroll-view` needs a fixed height (used `flex: 1` with `height: 100vh`) to scroll properly
+  - `confirm-type="send"` on input triggers `@confirm` on keyboard Enter
+  - Browser verification skipped — no Playwright Chrome in environment
 ---
