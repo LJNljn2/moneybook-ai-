@@ -10,7 +10,25 @@
           :class="{ 'filter-tab--active': activeDateTab === tab.key }"
           @tap="selectDateTab(tab.key)"
         >
-          <text class="filter-tab-text">{{ tab.label }}</text>
+          <!-- Month tab with inline navigation -->
+          <template v-if="tab.key === 'month' && activeDateTab === 'month'">
+            <view class="month-switcher-inline" @tap.stop>
+              <view class="month-arrow" @tap="prevMonth">
+                <text class="month-arrow-text">&lt;</text>
+              </view>
+              <text class="filter-tab-text">{{ monthLabel }}</text>
+              <view
+                class="month-arrow"
+                :class="{ 'month-arrow--disabled': isCurrentMonth }"
+                @tap="nextMonth"
+              >
+                <text class="month-arrow-text">&gt;</text>
+              </view>
+            </view>
+          </template>
+          <template v-else>
+            <text class="filter-tab-text">{{ tab.label }}</text>
+          </template>
         </view>
       </view>
     </view>
@@ -37,7 +55,22 @@
       </view>
     </scroll-view>
 
-    <!-- Summary -->
+    <!-- Summary card + charts (month tab only) -->
+    <template v-if="activeDateTab === 'month'">
+      <view class="summary-card">
+        <view class="summary-card-title">
+          <text class="summary-card-label">{{ monthLabel }}总支出</text>
+        </view>
+        <text class="summary-card-amount">¥{{ monthTotal.toFixed(2) }}</text>
+      </view>
+
+      <view class="charts-area" v-if="monthTotal > 0">
+        <PieChart :items="categoryPieData" />
+        <BarChart :data="dailyBarData" :monthLabel="monthLabel" />
+      </view>
+    </template>
+
+    <!-- Summary bar -->
     <view class="summary-bar">
       <text class="summary-text">
         共 {{ filteredExpenses.length }} 笔，合计 ¥{{ totalAmount.toFixed(2) }}
@@ -91,6 +124,8 @@ import { onShow } from '@dcloudio/uni-app'
 import { expenseService } from '@/store/expenses'
 import { categoryService } from '@/store/categories'
 import type { Expense, Category } from '@/types'
+import PieChart from '@/components/PieChart.vue'
+import BarChart from '@/components/BarChart.vue'
 
 type DateTab = 'today' | 'week' | 'month' | 'all'
 
@@ -110,6 +145,37 @@ const activeDateTab = ref<DateTab>('month')
 const selectedCategories = ref<string[]>([])
 const categories = ref<Category[]>([])
 const allExpenses = ref<Expense[]>([])
+
+// Month navigation state: 'YYYY-MM' format
+const selectedMonth = ref(formatYearMonth(new Date()))
+
+function formatYearMonth(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split('-')
+  return `${y}年${parseInt(m)}月`
+}
+
+const monthLabel = computed(() => formatMonthLabel(selectedMonth.value))
+
+const isCurrentMonth = computed(() => {
+  return selectedMonth.value === formatYearMonth(new Date())
+})
+
+function prevMonth() {
+  const [y, m] = selectedMonth.value.split('-').map(Number)
+  const d = new Date(y, m - 2, 1) // m-2 because m is 1-indexed and we want previous month
+  selectedMonth.value = formatYearMonth(d)
+}
+
+function nextMonth() {
+  if (isCurrentMonth.value) return
+  const [y, m] = selectedMonth.value.split('-').map(Number)
+  const d = new Date(y, m, 1) // m is 1-indexed, so m gives next month
+  selectedMonth.value = formatYearMonth(d)
+}
 
 function loadData() {
   categories.value = categoryService.getAll()
@@ -134,8 +200,13 @@ function getDateRange(tab: DateTab): { start: string; end: string } {
       return { start: monday.toISOString().slice(0, 10), end: today }
     }
     case 'month': {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-      return { start: firstDay.toISOString().slice(0, 10), end: today }
+      const [y, m] = selectedMonth.value.split('-').map(Number)
+      const firstDay = new Date(y, m - 1, 1)
+      const lastDay = new Date(y, m, 0) // day 0 of next month = last day of current
+      return {
+        start: firstDay.toISOString().slice(0, 10),
+        end: lastDay.toISOString().slice(0, 10),
+      }
     }
     case 'all':
       return { start: '0000-01-01', end: '9999-12-31' }
@@ -170,6 +241,44 @@ const filteredExpenses = computed(() => {
 
 const totalAmount = computed(() => {
   return filteredExpenses.value.reduce((sum, e) => sum + e.amount, 0)
+})
+
+// Month-specific data for charts
+const monthExpenses = computed(() => {
+  const { start, end } = getDateRange('month')
+  return expenseService.getByDateRangeAndCategory(start, end)
+})
+
+const monthTotal = computed(() => {
+  return monthExpenses.value.reduce((sum, e) => sum + e.amount, 0)
+})
+
+const categoryPieData = computed(() => {
+  const catMap = new Map<string, number>()
+  for (const e of monthExpenses.value) {
+    catMap.set(e.category, (catMap.get(e.category) ?? 0) + e.amount)
+  }
+  return Array.from(catMap.entries())
+    .map(([name, amount]) => {
+      const cat = categories.value.find(c => c.name === name)
+      return {
+        name,
+        value: amount,
+        color: cat?.color || '#999',
+        icon: cat?.icon || '📌',
+      }
+    })
+    .sort((a, b) => b.value - a.value)
+})
+
+const dailyBarData = computed(() => {
+  const dayMap = new Map<string, number>()
+  for (const e of monthExpenses.value) {
+    dayMap.set(e.date, (dayMap.get(e.date) ?? 0) + e.amount)
+  }
+  return Array.from(dayMap.entries())
+    .map(([date, amount]) => ({ date, amount }))
+    .sort((a, b) => a.date.localeCompare(b.date))
 })
 
 function getCategoryIcon(categoryName: string): string {
@@ -250,6 +359,31 @@ function handleDelete(expense: Expense) {
   font-weight: bold;
 }
 
+.month-switcher-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.month-arrow {
+  width: 40rpx;
+  height: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.month-arrow--disabled {
+  opacity: 0.3;
+}
+
+.month-arrow-text {
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: bold;
+}
+
 .category-filter {
   background-color: #fff;
   padding: 16rpx 24rpx;
@@ -286,6 +420,36 @@ function handleDelete(expense: Expense) {
   color: #2b7cff;
 }
 
+/* Summary card */
+.summary-card {
+  background-color: #fff;
+  margin: 16rpx 24rpx 0;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  align-items: center;
+}
+
+.summary-card-title {
+  margin-bottom: 8rpx;
+}
+
+.summary-card-label {
+  font-size: 26rpx;
+  color: #999;
+}
+
+.summary-card-amount {
+  font-size: 52rpx;
+  font-weight: bold;
+  color: #2b7cff;
+}
+
+/* Charts area */
+.charts-area {
+  padding: 0 24rpx;
+}
+
+/* Summary bar */
 .summary-bar {
   padding: 16rpx 24rpx;
 }

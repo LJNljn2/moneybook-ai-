@@ -10,6 +10,7 @@ Started: Sun May 24 01:24:48 CST 2026
 - Chat UI uses scroll-view with `scrollTop` bound to a ref; set to large value to scroll to bottom
 - AI streaming: `chatCompletionStream` for H5, `chatCompletion` fallback for other platforms
 - On non-tabBar pages, use `uni.navigateTo`; on tabBar pages, use `uni.switchTab`
+- For lightweight charts in UniApp H5, use custom SVG components instead of external chart libraries — reactive via Vue computed properties, no npm dependencies
 ---
 
 ## Sun May 24 01:35:00 CST 2026 - US-002
@@ -262,5 +263,52 @@ Started: Sun May 24 01:24:48 CST 2026
   - Expense records store category as plain string name, not ID — renaming categories doesn't auto-update existing records
   - `categoryService.add()` already forces `is_custom: true` for all new categories
   - Icon picker uses a grid of emoji options; selected icon gets a blue border highlight
+  - Browser verification skipped — no Playwright Chrome in environment
+---
+
+## Sat May 24 05:15:00 CST 2026 - US-017
+- Built expense data query and list on the statistics page, plus chat feedback cards
+- **Files changed:** src/pages/statistics/statistics.vue (replaced placeholder), src/components/ExpenseFeedbackCard.vue (new), src/pages/index/index.vue (added feedback cards)
+- Statistics page features:
+  - Date range filter tabs: 今天/本周/本月/全部 (default: 本月)
+  - Category filter chips (horizontal scroll, multi-select, "全部" to clear)
+  - Summary bar showing count and total amount
+  - Expense list with icon, category, amount, note, date per row
+  - Edit button (opens uni.showModal with editable note) and delete button (with confirmation)
+  - Empty state when no records match filters
+- Chat feedback cards:
+  - After AI extracts and saves expenses, structured feedback cards appear below the chat
+  - Each card shows: category icon, category name, amount (blue bold), note, date, "已记录" status
+  - Edit and delete buttons on each card (delete shows confirmation, marks card as "已删除" with dimmed style)
+  - Category validation: if AI returns an unknown category, it's auto-assigned to "其他"
+  - Auto-clear context delay increased from 1.5s to 8s so users can interact with feedback cards
+- **Learnings for future iterations:**
+  - `expenseService.getByDateRangeAndCategory()` already supports combined date+category filtering with sorting — perfect for list views
+  - Date range calculation uses `toISOString().slice(0, 10)` for consistent YYYY-MM-DD format
+  - `week` tab calculates Monday as start using `getDay() || 7` pattern
+  - Feedback cards use the expense's real ID from storage, enabling direct CRUD operations
+  - The `ExpenseFeedbackCard` component is reusable — receives `expense` and `isDeleted` props, emits `edit`/`delete` events
+  - Category chip filter uses `splice` for reactive array removal (not reassignment) to preserve reactivity
+  - Browser verification skipped — no Playwright Chrome in environment
+---
+
+## Sat May 24 05:30:00 CST 2026 - US-018
+- Built statistical charts for monthly overview with SVG-based visualizations
+- **Files changed:** src/components/PieChart.vue (new), src/components/BarChart.vue (new), src/pages/statistics/statistics.vue (updated)
+- Features:
+  - Month switcher integrated into the "本月" date tab with < > navigation arrows (right arrow disabled on current month)
+  - Summary card showing monthly total expense amount (¥XX.XX) with large blue number
+  - Pie chart: SVG-based with colored slices and percentage labels inside, legend with category icons on the right
+  - Bar chart: SVG-based vertical bars showing daily spending amounts, with Y-axis labels and grid lines
+  - Charts only render when month has expense data, empty state shown otherwise
+  - Month navigation uses selectedMonth state ('YYYY-MM' format) to recalculate date ranges
+  - All existing date range filters (今天/本周/本月/全部) and category filters continue to work unchanged
+- **Learnings for future iterations:**
+  - SVG charts work well in UniApp H5 — lightweight, no external dependencies, reactive via Vue computed properties
+  - Pie chart uses standard SVG arc path with large-arc-flag for slices > 180°; full circle drawn as two semicircles
+  - Bar chart uses fixed SVG viewBox (320x120) — responsive on all screen sizes via CSS scaling
+  - Month state stored as 'YYYY-MM' string; `new Date(year, month, 0)` gives last day of that month
+  - `getDateRange('month')` uses selectedMonth instead of current date when month tab is active
+  - Category colors come from Category.color field in storage — charts inherit any custom category colors
   - Browser verification skipped — no Playwright Chrome in environment
 ---
