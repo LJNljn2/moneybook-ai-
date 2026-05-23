@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import type { AiPlatform, ActivePlatformConfig } from '../../types'
-import { SettingKeys } from '../../types'
+import { SettingKeys, DEFAULT_SYSTEM_PROMPT } from '../../types'
 import { aiPlatformService } from '../../store/ai-platforms'
 import { apiKeyService } from '../../store/api-keys'
 import { settingService } from '../../store/settings'
@@ -13,6 +13,9 @@ const selectedModel = ref('')
 const apiKey = ref('')
 const baseUrl = ref('')
 const customName = ref('')
+
+// System prompt
+const systemPrompt = ref('')
 
 // Custom platform form
 const showCustomForm = ref(false)
@@ -47,6 +50,9 @@ function loadData() {
   if (!selectedPlatformId.value && platforms.value.length > 0) {
     selectedPlatformId.value = platforms.value[0].id
   }
+
+  // Load system prompt
+  systemPrompt.value = settingService.get(SettingKeys.SYSTEM_PROMPT) ?? DEFAULT_SYSTEM_PROMPT
 
   loadPlatformDetails()
 }
@@ -176,6 +182,25 @@ function saveConfig() {
   uni.showToast({ title: '已保存', icon: 'success' })
 }
 
+function saveSystemPrompt() {
+  settingService.set(SettingKeys.SYSTEM_PROMPT, systemPrompt.value)
+  uni.showToast({ title: '已保存', icon: 'success' })
+}
+
+function resetSystemPrompt() {
+  uni.showModal({
+    title: '重置提示词',
+    content: '确定要恢复为默认系统提示词吗？',
+    success(res) {
+      if (res.confirm) {
+        systemPrompt.value = DEFAULT_SYSTEM_PROMPT
+        settingService.set(SettingKeys.SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT)
+        uni.showToast({ title: '已重置', icon: 'success' })
+      }
+    },
+  })
+}
+
 onMounted(() => {
   loadData()
 })
@@ -276,6 +301,28 @@ onMounted(() => {
         >
           删除平台
         </button>
+      </view>
+    </view>
+
+    <!-- System Prompt Section -->
+    <view class="section">
+      <view class="section-header">
+        <text class="section-title">系统提示词</text>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">AI 助手的行为指令</text>
+        <textarea
+          class="form-textarea"
+          v-model="systemPrompt"
+          placeholder="请输入系统提示词"
+          :maxlength="-1"
+        />
+      </view>
+
+      <view class="actions">
+        <button class="btn-save" @click="saveSystemPrompt">保存提示词</button>
+        <button class="btn-reset" @click="resetSystemPrompt">恢复默认</button>
       </view>
     </view>
 
@@ -456,5 +503,32 @@ onMounted(() => {
 
 .custom-form {
   padding-top: 8rpx;
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 240rpx;
+  padding: 16rpx 20rpx;
+  background-color: #f8f8f8;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  color: #333;
+  box-sizing: border-box;
+  line-height: 1.6;
+}
+
+.btn-reset {
+  flex: 0 0 auto;
+  background-color: #fff;
+  color: #666;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  padding: 16rpx 32rpx;
+  border: 1rpx solid #ccc;
+  line-height: 1.5;
+}
+
+.btn-reset:active {
+  opacity: 0.8;
 }
 </style>
