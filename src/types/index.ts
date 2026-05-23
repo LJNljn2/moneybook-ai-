@@ -31,6 +31,7 @@ export const SettingKeys = {
   AI_AVATAR: 'ai_avatar',
   AI_NICKNAME: 'ai_nickname',
   PLATFORM_CONFIG: 'platform_config',
+  API_KEYS: 'api_keys',
   ONBOARDING_DONE: 'onboarding_done',
   MONTHLY_BUDGET: 'monthly_budget',
 } as const
