@@ -17,15 +17,11 @@ import { DeepSeekAdapter } from './deepseek-adapter'
 import { ZhipuAdapter } from './zhipu-adapter'
 import { QwenAdapter } from './qwen-adapter'
 import { MoonshotAdapter } from './moonshot-adapter'
+import { DoubaoAdapter } from './doubao-adapter'
 
 export { BaseAdapter }
 
 // --- Stub 适配器类（待后续 story 替换为真实实现） ---
-
-class DoubaoAdapter extends BaseAdapter {
-  readonly name = 'doubao'
-  readonly supportsThinking = true
-}
 
 class ErnieAdapter extends BaseAdapter {
   readonly name = 'ernie'
