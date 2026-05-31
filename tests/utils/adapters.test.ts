@@ -83,7 +83,7 @@ describe('ChatAdapter interface', () => {
   })
 
   it('stub adapters should throw on streamChat', () => {
-    const config = createTestConfig({ id: 'ernie' })
+    const config = createTestConfig({ id: 'claude' })
     const adapter = createAdapter(config)
 
     expect(() => adapter.streamChat([])).toThrow('not implemented yet')

@@ -18,15 +18,11 @@ import { ZhipuAdapter } from './zhipu-adapter'
 import { QwenAdapter } from './qwen-adapter'
 import { MoonshotAdapter } from './moonshot-adapter'
 import { DoubaoAdapter } from './doubao-adapter'
+import { ErnieAdapter } from './ernie-adapter'
 
 export { BaseAdapter }
 
 // --- Stub 适配器类（待后续 story 替换为真实实现） ---
-
-class ErnieAdapter extends BaseAdapter {
-  readonly name = 'ernie'
-  readonly supportsThinking = true
-}
 
 class ClaudeAdapter extends BaseAdapter {
   readonly name = 'claude'
