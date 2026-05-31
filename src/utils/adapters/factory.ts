@@ -15,15 +15,11 @@ import type {
 import { BaseAdapter } from './base-adapter'
 import { DeepSeekAdapter } from './deepseek-adapter'
 import { ZhipuAdapter } from './zhipu-adapter'
+import { QwenAdapter } from './qwen-adapter'
 
 export { BaseAdapter }
 
 // --- Stub 适配器类（待后续 story 替换为真实实现） ---
-
-class QwenAdapter extends BaseAdapter {
-  readonly name = 'qwen'
-  readonly supportsThinking = true
-}
 
 class MoonshotAdapter extends BaseAdapter {
   readonly name = 'moonshot'
