@@ -1,5 +1,6 @@
 import { getItem, setItem } from '../utils/storage'
-import type { AiPlatform } from '../types'
+import type { AiPlatform, ModelConfig } from '../types'
+import { migrateModels } from '../types'
 
 const KEY = 'ai_platforms'
 
@@ -9,41 +10,70 @@ const BUILT_IN_PLATFORMS: AiPlatform[] = [
     id: 'openai',
     name: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    models: [
+      { name: 'gpt-4o', supportsThinking: false },
+      { name: 'gpt-4o-mini', supportsThinking: false },
+      { name: 'gpt-4-turbo', supportsThinking: false },
+      { name: 'gpt-3.5-turbo', supportsThinking: false },
+    ],
     isCustom: false,
   },
   {
     id: 'tongyi',
     name: '通义千问',
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    models: ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-long'],
+    models: [
+      { name: 'qwen-turbo', supportsThinking: false },
+      { name: 'qwen-plus', supportsThinking: false },
+      { name: 'qwen-max', supportsThinking: false },
+      { name: 'qwen-long', supportsThinking: false },
+      { name: 'qwq-32b', supportsThinking: true },
+    ],
     isCustom: false,
   },
   {
     id: 'deepseek',
     name: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com/v1',
-    models: ['deepseek-chat', 'deepseek-coder'],
+    models: [
+      { name: 'deepseek-chat', supportsThinking: false },
+      { name: 'deepseek-coder', supportsThinking: false },
+      { name: 'deepseek-reasoner', supportsThinking: true },
+    ],
     isCustom: false,
   },
   {
     id: 'zhipu',
     name: '智谱 GLM',
     baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    models: ['glm-4', 'glm-4-flash', 'glm-4-air'],
+    models: [
+      { name: 'glm-4', supportsThinking: false },
+      { name: 'glm-4-flash', supportsThinking: false },
+      { name: 'glm-4-air', supportsThinking: false },
+      { name: 'glm-4-reasoning', supportsThinking: true },
+    ],
     isCustom: false,
   },
   {
     id: 'moonshot',
     name: 'Kimi（Moonshot）',
     baseUrl: 'https://api.moonshot.cn/v1',
-    models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+    models: [
+      { name: 'moonshot-v1-8k', supportsThinking: false },
+      { name: 'moonshot-v1-32k', supportsThinking: false },
+      { name: 'moonshot-v1-128k', supportsThinking: false },
+    ],
     isCustom: false,
   },
 ]
 
 function getAll(): AiPlatform[] {
-  return getItem<AiPlatform[]>(KEY) ?? []
+  const raw = getItem<any[]>(KEY) ?? []
+  // 数据迁移：将旧格式 models: string[] 转换为 ModelConfig[]
+  return raw.map(p => ({
+    ...p,
+    models: Array.isArray(p.models) ? migrateModels(p.models) : [],
+  }))
 }
 
 function saveAll(list: AiPlatform[]): void {
@@ -67,10 +97,12 @@ function getById(id: string): AiPlatform | undefined {
 }
 
 /** 新增自定义平台 */
-function add(platform: Omit<AiPlatform, 'id' | 'isCustom'>): AiPlatform {
+function add(platform: { name: string; baseUrl: string; models: Array<string | ModelConfig> }): AiPlatform {
   const customs = getAll()
   const newPlatform: AiPlatform = {
-    ...platform,
+    name: platform.name,
+    baseUrl: platform.baseUrl,
+    models: migrateModels(platform.models),
     id: 'custom_' + Date.now(),
     isCustom: true,
   }
@@ -80,11 +112,18 @@ function add(platform: Omit<AiPlatform, 'id' | 'isCustom'>): AiPlatform {
 }
 
 /** 编辑自定义平台 */
-function update(id: string, data: Partial<Pick<AiPlatform, 'name' | 'baseUrl' | 'models'>>): boolean {
+function update(id: string, data: Partial<Pick<AiPlatform, 'name' | 'baseUrl'>> & { models?: Array<string | ModelConfig> }): boolean {
   const customs = getAll()
   const idx = customs.findIndex(p => p.id === id)
   if (idx < 0) return false
-  customs[idx] = { ...customs[idx], ...data }
+  const existing = customs[idx]
+  const updated: AiPlatform = {
+    ...existing,
+    name: data.name ?? existing.name,
+    baseUrl: data.baseUrl ?? existing.baseUrl,
+    models: data.models ? migrateModels(data.models) : existing.models,
+  }
+  customs[idx] = updated
   saveAll(customs)
   return true
 }

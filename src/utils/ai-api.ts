@@ -3,8 +3,8 @@
  * 支持 OpenAI Chat Completions 兼容格式 + SSE 流式响应
  */
 
-import type { ChatMessage, ActivePlatformConfig } from '../types'
-import { DEFAULT_SYSTEM_PROMPT } from '../types'
+import type { ChatMessage, ActivePlatformConfig, AiPlatform } from '../types'
+import { DEFAULT_SYSTEM_PROMPT, isThinkingModel } from '../types'
 import { aiPlatformService } from '../store/ai-platforms'
 import { apiKeyService } from '../store/api-keys'
 import { settingService } from '../store/settings'
@@ -25,7 +25,7 @@ export interface StreamCallbacks {
 /**
  * 获取当前有效的平台配置和 API Key
  */
-function getActiveConfig(): { baseUrl: string; apiKey: string; model: string } | null {
+function getActiveConfig(): { baseUrl: string; apiKey: string; model: string; platformId: string; platform: AiPlatform } | null {
   const configStr = settingService.get(SettingKeys.PLATFORM_CONFIG)
   if (!configStr) return null
 
@@ -45,7 +45,9 @@ function getActiveConfig(): { baseUrl: string; apiKey: string; model: string } |
   return {
     baseUrl: platform.baseUrl,
     apiKey,
-    model: config.model || platform.models[0],
+    model: config.model || platform.models[0]?.name || '',
+    platformId: config.platformId,
+    platform,
   }
 }
 
@@ -279,4 +281,22 @@ export async function chatCompletion(userMessages: ChatMessage[]): Promise<strin
  */
 export function isConfigured(): boolean {
   return getActiveConfig() !== null
+}
+
+/**
+ * 检查当前选中的模型是否支持思考输出
+ */
+export function isActiveModelThinking(): boolean {
+  const config = getActiveConfig()
+  if (!config) return false
+  return isThinkingModel(config.platform, config.model)
+}
+
+/**
+ * 获取当前活跃的平台 ID 和模型名称
+ */
+export function getActiveProviderInfo(): { platformId: string; model: string } | null {
+  const config = getActiveConfig()
+  if (!config) return null
+  return { platformId: config.platformId, model: config.model }
 }

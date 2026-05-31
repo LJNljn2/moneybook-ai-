@@ -29,9 +29,6 @@ const customName = ref('')
 // System prompt
 const systemPrompt = ref('')
 
-// Custom platform form
-const showCustomForm = ref(false)
-
 // Category management
 const categories = ref<Category[]>([])
 const newCategoryName = ref('')
@@ -45,10 +42,12 @@ const selectedPlatform = computed(() =>
 )
 
 const isCustom = computed(() => selectedPlatform.value?.isCustom ?? false)
+const isAddingNew = computed(() => selectedPlatformId.value === 'add_new')
+const showCustomFields = computed(() => isCustom.value || isAddingNew.value)
 
 const modelOptions = computed(() => {
   if (!selectedPlatform.value) return []
-  return selectedPlatform.value.models
+  return selectedPlatform.value.models.map(m => m.name)
 })
 
 function loadData() {
@@ -97,13 +96,20 @@ function loadPlatformDetails() {
   apiKey.value = apiKeyService.get(platform.id) ?? ''
 
   // Default to first model if current model not in list
-  if (platform.models.length > 0 && !platform.models.includes(selectedModel.value)) {
-    selectedModel.value = platform.models[0]
+  const modelNames = platform.models.map(m => m.name)
+  if (platform.models.length > 0 && !modelNames.includes(selectedModel.value)) {
+    selectedModel.value = modelNames[0]
   }
 }
 
 function onPlatformChange(e: { detail: { value: number } }) {
   const idx = e.detail.value
+  if (idx === platforms.value.length) {
+    // "添加自定义平台" selected
+    selectedPlatformId.value = 'add_new'
+    startAddNewPlatform()
+    return
+  }
   selectedPlatformId.value = platforms.value[idx].id
   loadPlatformDetails()
 }
@@ -113,43 +119,16 @@ function onModelChange(e: { detail: { value: number } }) {
   selectedModel.value = modelOptions.value[idx]
 }
 
-function toggleCustomForm() {
-  showCustomForm.value = !showCustomForm.value
-  if (showCustomForm.value) {
-    customName.value = ''
-    baseUrl.value = ''
-    selectedModel.value = ''
-    apiKey.value = ''
-  }
+function startAddNewPlatform() {
+  customName.value = ''
+  baseUrl.value = ''
+  selectedModel.value = ''
+  apiKey.value = ''
 }
 
-function addCustomPlatform() {
-  if (!customName.value.trim() || !baseUrl.value.trim()) {
-    uni.showToast({ title: '请填写名称和 Base URL', icon: 'none' })
-    return
-  }
-
-  const models = selectedModel.value
-    ? selectedModel.value.split(',').map(m => m.trim()).filter(Boolean)
-    : []
-
-  const newPlatform = aiPlatformService.add({
-    name: customName.value.trim(),
-    baseUrl: baseUrl.value.trim(),
-    models,
-  })
-
-  // Save API key for new platform
-  if (apiKey.value.trim()) {
-    apiKeyService.set(newPlatform.id, apiKey.value.trim())
-  }
-
-  // Select the new platform
-  selectedPlatformId.value = newPlatform.id
-  showCustomForm.value = false
-
+function cancelAddNew() {
+  selectedPlatformId.value = ''
   loadData()
-  uni.showToast({ title: '已添加', icon: 'success' })
 }
 
 function deleteCustomPlatform() {
@@ -182,19 +161,32 @@ function saveConfig() {
     return
   }
 
+  // If adding a new custom platform, create it first
+  if (isAddingNew.value) {
+    if (!customName.value.trim() || !baseUrl.value.trim()) {
+      uni.showToast({ title: '请填写平台名称和 Base URL', icon: 'none' })
+      return
+    }
+
+    const models = selectedModel.value
+      ? selectedModel.value.split(',').map(m => m.trim()).filter(Boolean)
+      : []
+
+    const newPlatform = aiPlatformService.add({
+      name: customName.value.trim(),
+      baseUrl: baseUrl.value.trim(),
+      models,
+    })
+
+    selectedPlatformId.value = newPlatform.id
+  }
+
   // Save API key
   if (apiKey.value.trim()) {
     apiKeyService.set(selectedPlatformId.value, apiKey.value.trim())
   } else {
     apiKeyService.remove(selectedPlatformId.value)
   }
-
-  // Save active platform config
-  const config: ActivePlatformConfig = {
-    platformId: selectedPlatformId.value,
-    model: selectedModel.value,
-  }
-  settingService.set(SettingKeys.PLATFORM_CONFIG, JSON.stringify(config))
 
   // If custom platform, update name and baseUrl
   if (isCustom.value && selectedPlatform.value) {
@@ -207,9 +199,16 @@ function saveConfig() {
       baseUrl: baseUrl.value.trim() || selectedPlatform.value.baseUrl,
       models,
     })
-    loadData()
   }
 
+  // Save active platform config
+  const config: ActivePlatformConfig = {
+    platformId: selectedPlatformId.value,
+    model: selectedModel.value,
+  }
+  settingService.set(SettingKeys.PLATFORM_CONFIG, JSON.stringify(config))
+
+  loadData()
   uni.showToast({ title: '已保存', icon: 'success' })
 }
 
@@ -411,19 +410,19 @@ onMounted(() => {
       <view class="form-item">
         <text class="form-label">AI 平台</text>
         <picker
-          :range="platforms.map(p => p.name)"
-          :value="platforms.findIndex(p => p.id === selectedPlatformId)"
+          :range="[...platforms.map(p => p.name), '＋ 添加自定义平台']"
+          :value="isAddingNew ? platforms.length : platforms.findIndex(p => p.id === selectedPlatformId)"
           @change="onPlatformChange"
         >
           <view class="picker-value">
-            <text>{{ selectedPlatform?.name || '请选择平台' }}</text>
+            <text>{{ isAddingNew ? '新建自定义平台' : (selectedPlatform?.name || '请选择平台') }}</text>
             <text class="picker-arrow">></text>
           </view>
         </picker>
       </view>
 
       <!-- Model Selector (for platforms with preset models) -->
-      <view class="form-item" v-if="modelOptions.length > 0 && !isCustom">
+      <view class="form-item" v-if="modelOptions.length > 0 && !showCustomFields">
         <text class="form-label">模型</text>
         <picker
           :range="modelOptions"
@@ -438,7 +437,7 @@ onMounted(() => {
       </view>
 
       <!-- Custom platform fields -->
-      <template v-if="isCustom">
+      <template v-if="showCustomFields">
         <view class="form-item">
           <text class="form-label">平台名称</text>
           <input
@@ -468,7 +467,7 @@ onMounted(() => {
       </template>
 
       <!-- Base URL display for built-in -->
-      <view class="form-item" v-if="!isCustom && selectedPlatform">
+      <view class="form-item" v-if="!showCustomFields && selectedPlatform">
         <text class="form-label">Base URL</text>
         <text class="form-value-readonly">{{ selectedPlatform.baseUrl }}</text>
       </view>
@@ -486,13 +485,20 @@ onMounted(() => {
 
       <!-- Actions -->
       <view class="actions">
-        <button class="btn-save" @click="saveConfig">保存配置</button>
+        <button class="btn-save" @click="saveConfig">{{ isAddingNew ? '创建并保存' : '保存配置' }}</button>
         <button
           class="btn-delete"
-          v-if="isCustom"
+          v-if="isCustom && !isAddingNew"
           @click="deleteCustomPlatform"
         >
           删除平台
+        </button>
+        <button
+          class="btn-reset"
+          v-if="isAddingNew"
+          @click="cancelAddNew"
+        >
+          取消
         </button>
       </view>
     </view>
@@ -586,51 +592,6 @@ onMounted(() => {
       </view>
     </view>
 
-    <!-- Add Custom Platform -->
-    <view class="section">
-      <view class="section-header" @click="toggleCustomForm">
-        <text class="section-title">添加自定义平台</text>
-        <text class="section-toggle">{{ showCustomForm ? '收起' : '展开' }}</text>
-      </view>
-
-      <view class="custom-form" v-if="showCustomForm">
-        <view class="form-item">
-          <text class="form-label">平台名称</text>
-          <input
-            class="form-input"
-            v-model="customName"
-            placeholder="如：我的 API"
-          />
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">Base URL</text>
-          <input
-            class="form-input"
-            v-model="baseUrl"
-            placeholder="https://api.example.com/v1"
-          />
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">模型名称</text>
-          <input
-            class="form-input"
-            v-model="selectedModel"
-            placeholder="model-name（多个用逗号分隔）"
-          />
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">API Key</text>
-          <view class="api-key-wrapper">
-            <ApiKeyInput v-model="apiKey" placeholder="请输入 API Key" />
-          </view>
-        </view>
-
-        <button class="btn-save" @click="addCustomPlatform">添加平台</button>
-      </view>
-    </view>
   </scroll-view>
 </template>
 
@@ -661,11 +622,6 @@ onMounted(() => {
   font-size: 32rpx;
   font-weight: 600;
   color: #333;
-}
-
-.section-toggle {
-  font-size: 26rpx;
-  color: #2b7cff;
 }
 
 .form-item {

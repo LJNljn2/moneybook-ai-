@@ -34,16 +34,24 @@ export const SettingKeys = {
   API_KEYS: 'api_keys',
   ONBOARDING_DONE: 'onboarding_done',
   MONTHLY_BUDGET: 'monthly_budget',
+  THINKING_MODEL_DEFAULT: 'thinking_model_default',
+  DEFAULT_THINKING_BUDGET: 'default_thinking_budget',
 } as const
 
 export type SettingKey = typeof SettingKeys[keyof typeof SettingKeys]
+
+/** 模型配置（含思考能力标记） */
+export interface ModelConfig {
+  name: string
+  supportsThinking: boolean
+}
 
 /** AI 平台配置 */
 export interface AiPlatform {
   id: string
   name: string
   baseUrl: string
-  models: string[] // 可选模型列表
+  models: ModelConfig[] // 可选模型列表
   isCustom: boolean // 是否用户自定义
 }
 
@@ -54,6 +62,9 @@ export type ChatRole = 'system' | 'user' | 'assistant'
 export interface ChatMessage {
   role: ChatRole
   content: string
+  model?: string // 使用的模型名称
+  provider?: string // 供应商 ID
+  hasThinking?: boolean // 是否包含思考过程（内容不持久化）
 }
 
 /** 当前使用的平台配置（运行时） */
@@ -84,5 +95,32 @@ export const DEFAULT_SYSTEM_PROMPT = [
   '- 日期默认为今天，如果用户提到其他日期请调整',
   '- 金额必须是正数',
   '- 如果信息不全，友好地追问',
-  '- 用户消息开头的 [消费数据上下文] 是系统自动注入的近期消费摘要，用于你分析和回复，不要提及这个标记',
+  '- 用户消息开头的 [已存在消费记录] 区块是系统自动注入的历史数据，仅用于你参考和分析，绝对不要从中提取 JSON 记账数据',
+  '- 只有用户在"用户消息："之后明确提到的消费才需要记账，不要重复记录已有的数据',
 ].join('\n')
+
+/** 从平台获取所有模型名称 */
+export function getModelNames(platform: AiPlatform): string[] {
+  return platform.models.map(m => m.name)
+}
+
+/** 检查平台的指定模型是否支持思考 */
+export function isThinkingModel(platform: AiPlatform, modelName: string): boolean {
+  const model = platform.models.find(m => m.name === modelName)
+  return model?.supportsThinking ?? false
+}
+
+/** 获取平台中所有支持思考的模型 */
+export function getThinkingModels(platform: AiPlatform): ModelConfig[] {
+  return platform.models.filter(m => m.supportsThinking)
+}
+
+/** 将旧格式 string[] 转换为 ModelConfig[]（数据迁移辅助） */
+export function migrateModels(models: Array<string | ModelConfig>): ModelConfig[] {
+  return models.map(m => {
+    if (typeof m === 'string') {
+      return { name: m, supportsThinking: false }
+    }
+    return m
+  })
+}
