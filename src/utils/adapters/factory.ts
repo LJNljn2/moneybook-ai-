@@ -6,40 +6,18 @@
  * 此处的 Stub 类将在对应 story 中替换为真实实现。
  */
 
-import type { ChatMessage } from '../../types'
 import type {
   ChatAdapter,
-  StreamOptions,
-  ThinkingChunk,
   ProviderConfig,
   AdapterConstructor,
 } from './types'
 
-/**
- * 基础适配器类
- * 所有适配器共享的通用逻辑，具体解析逻辑由子类覆盖
- */
-abstract class BaseAdapter implements ChatAdapter {
-  abstract readonly name: string
-  abstract readonly supportsThinking: boolean
+import { BaseAdapter } from './base-adapter'
+import { DeepSeekAdapter } from './deepseek-adapter'
 
-  protected config: ProviderConfig
-
-  constructor(config: ProviderConfig) {
-    this.config = config
-  }
-
-  streamChat(_messages: ChatMessage[], _options?: StreamOptions): AsyncIterableIterator<ThinkingChunk> {
-    throw new Error(`Adapter "${this.name}" streamChat not implemented yet`)
-  }
-}
+export { BaseAdapter }
 
 // --- Stub 适配器类（待后续 story 替换为真实实现） ---
-
-class DeepSeekAdapter extends BaseAdapter {
-  readonly name = 'deepseek'
-  readonly supportsThinking = true
-}
 
 class ZhipuAdapter extends BaseAdapter {
   readonly name = 'zhipu'
