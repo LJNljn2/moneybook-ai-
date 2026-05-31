@@ -83,7 +83,7 @@ describe('ChatAdapter interface', () => {
   })
 
   it('stub adapters should throw on streamChat', () => {
-    const config = createTestConfig({ id: 'openai' })
+    const config = createTestConfig({ id: 'openrouter' })
     const adapter = createAdapter(config)
 
     expect(() => adapter.streamChat([])).toThrow('not implemented yet')

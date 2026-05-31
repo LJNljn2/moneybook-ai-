@@ -21,15 +21,11 @@ import { DoubaoAdapter } from './doubao-adapter'
 import { ErnieAdapter } from './ernie-adapter'
 import { ClaudeAdapter } from './claude-adapter'
 import { GeminiAdapter } from './gemini-adapter'
+import { OpenAIAdapter } from './openai-adapter'
 
 export { BaseAdapter }
 
 // --- Stub 适配器类（待后续 story 替换为真实实现） ---
-
-class OpenAIAdapter extends BaseAdapter {
-  readonly name = 'openai'
-  readonly supportsThinking = false
-}
 
 class OpenRouterAdapter extends BaseAdapter {
   readonly name = 'openrouter'
