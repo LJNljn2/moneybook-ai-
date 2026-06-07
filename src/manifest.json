@@ -1,5 +1,5 @@
 {
-    "name" : "MoneyChat",
+    "name" : "MoneyBook AI",
     "appid" : "__UNI__MNYCHAT",
     "description" : "AI 对话记账 — 用聊天的方式记录每一笔消费",
     "versionName" : "1.0.0",
@@ -41,10 +41,10 @@
                 },
                 "signatureConfigs" : [
                     {
-                        "storePassword" : "moneychat",
-                        "alias" : "moneychat",
-                        "keyPassword" : "moneychat",
-                        "storePath" : "/static/app-icon/moneychat.keystore"
+                        "alias" : "moneybook-ai",
+                        "storePassword" : "{STORE_PASSWORD}",
+                        "keyPassword" : "{KEY_PASSWORD}",
+                        "storePath" : "{STORE_PATH}"
                     }
                 ]
             },

@@ -6,7 +6,7 @@
         <view class="splash-icon">
           <text class="splash-icon-text">💰</text>
         </view>
-        <text class="splash-title">MoneyChat</text>
+        <text class="splash-title">MoneyBook AI</text>
         <text class="splash-subtitle">AI 对话记账</text>
         <view class="splash-loader">
           <view class="splash-dot"></view>
@@ -14,7 +14,7 @@
           <view class="splash-dot"></view>
         </view>
       </view>
-      <text class="splash-credit">莞外校草 — leonan 开发</text>
+      <text class="splash-credit">Built with 💰 by leonan</text>
     </view>
 
     <scroll-view
@@ -908,8 +908,9 @@ async function handleSend() {
 .splash-credit {
   position: absolute;
   bottom: calc(80rpx + env(safe-area-inset-bottom));
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.25);
+  font-size: 30rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
   letter-spacing: 2rpx;
 }
 </style>

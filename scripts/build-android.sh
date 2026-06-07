@@ -1,5 +1,5 @@
 #!/bin/bash
-# MoneyChat Android APK Build Script
+# MoneyBook AI Android APK Build Script
 # Usage: ./scripts/build-android.sh
 #
 # Prerequisites:
@@ -25,7 +25,7 @@
 
 set -e
 
-echo "=== MoneyChat Android Build ==="
+echo "=== MoneyBook AI Android Build ==="
 echo ""
 
 # Step 1: Run type check
@@ -54,8 +54,8 @@ echo ""
 echo "Next steps:"
 echo "  - Open project in HBuilderX for cloud packaging"
 echo "  - Or run 'npx uni build -p app' for local build resources"
-echo "  - Keystore: static/app-icon/moneychat.keystore"
-echo "  - Keystore password: moneychat"
+echo "  - Keystore: (configure in manifest.json or HBuilderX)"
+echo "  - Keystore password: (configure in manifest.json or HBuilderX)"
 echo ""
 echo "NOTE: For production, regenerate the keystore with secure passwords!"
-echo "  keytool -genkey -v -keystore moneychat.keystore -alias moneychat"
+echo "  keytool -genkey -v -keystore moneybook-ai.keystore -alias moneybook-ai"

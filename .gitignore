@@ -1,5 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist/build/
+unpackage/
+
+# Android build
+android/app/build/
+android/.gradle/
+android/local.properties
+*.apk
+*.aab
+*.aar
+*.jar
+
+# Test outputs
+test-results/
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+*.lnk
+
+# Editor
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local env files
+*.local
+*.env.local
+*.env.production.local
+
+# Platform-specific
+*.keystore
+*.jks
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,16 +51,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-.DS_Store
-dist
-unpackage
-*.local
+# Claude Code
+.claude/settings.local.json
 
-# Editor directories and files
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# Windows file metadata
+*.Zone.Identifier
+*.:idle
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/

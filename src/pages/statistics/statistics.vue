@@ -10,27 +10,26 @@
           :class="{ 'filter-tab--active': activeDateTab === tab.key }"
           @tap="selectDateTab(tab.key)"
         >
-          <!-- Month tab with inline navigation -->
-          <template v-if="tab.key === 'month' && activeDateTab === 'month'">
-            <view class="month-switcher-inline" @tap.stop>
-              <view class="month-arrow" @tap="prevMonth">
-                <text class="month-arrow-text">&lt;</text>
-              </view>
-              <text class="filter-tab-text">{{ monthLabel }}</text>
-              <view
-                class="month-arrow"
-                :class="{ 'month-arrow--disabled': isCurrentMonth }"
-                @tap="nextMonth"
-              >
-                <text class="month-arrow-text">&gt;</text>
-              </view>
-            </view>
-          </template>
-          <template v-else>
-            <text class="filter-tab-text">{{ tab.label }}</text>
-          </template>
+          <text class="filter-tab-text">{{ tab.label }}</text>
         </view>
       </view>
+    </view>
+
+    <!-- Custom date range picker -->
+    <view v-if="activeDateTab === 'custom'" class="custom-range-bar">
+      <picker mode="date" :value="customStart" :end="customEnd || today" @change="onCustomStartChange">
+        <view class="custom-range-item">
+          <text class="custom-range-label">开始</text>
+          <text class="custom-range-value">{{ customStart || '选择日期' }}</text>
+        </view>
+      </picker>
+      <text class="custom-range-sep">—</text>
+      <picker mode="date" :value="customEnd" :start="customStart" :end="today" @change="onCustomEndChange">
+        <view class="custom-range-item">
+          <text class="custom-range-label">结束</text>
+          <text class="custom-range-value">{{ customEnd || '选择日期' }}</text>
+        </view>
+      </picker>
     </view>
 
     <!-- Category filter -->
@@ -55,50 +54,20 @@
       </view>
     </scroll-view>
 
-    <!-- Charts section: time range + summary + charts -->
-    <template v-if="activeDateTab === 'month'">
-      <!-- Chart time range selector -->
-      <view class="chart-range-bar">
-        <view
-          v-for="r in chartRanges"
-          :key="r.key"
-          class="chart-range-tab"
-          :class="{ 'chart-range-tab--active': activeChartRange === r.key }"
-          @tap="selectChartRange(r.key)"
-        >
-          <text class="chart-range-text">{{ r.label }}</text>
-        </view>
-      </view>
-
-      <!-- Custom date range inputs -->
-      <view v-if="activeChartRange === 'custom'" class="custom-range-bar">
-        <view class="custom-range-item" @tap="pickStartDate">
-          <text class="custom-range-label">开始</text>
-          <text class="custom-range-value">{{ customStart || '选择日期' }}</text>
-        </view>
-        <text class="custom-range-sep">—</text>
-        <view class="custom-range-item" @tap="pickEndDate">
-          <text class="custom-range-label">结束</text>
-          <text class="custom-range-value">{{ customEnd || '选择日期' }}</text>
-        </view>
-      </view>
-
+    <!-- Charts section -->
+    <template v-if="filteredExpenses.length > 0">
       <!-- Summary card -->
       <view class="summary-card">
         <view class="summary-card-title">
-          <text class="summary-card-label">{{ chartRangeLabel }}总支出</text>
+          <text class="summary-card-label">{{ dateRangeLabel }}总支出</text>
         </view>
-        <text class="summary-card-amount">¥{{ chartTotal.toFixed(2) }}</text>
+        <text class="summary-card-amount">¥{{ totalAmount.toFixed(2) }}</text>
       </view>
 
       <!-- Charts -->
-      <view class="charts-area" v-if="chartTotal > 0">
+      <view class="charts-area">
         <PieChart :items="categoryPieData" @slice-click="onPieSliceClick" />
-        <BarChart :data="barData" :monthLabel="chartRangeLabel" :mode="barMode" />
-      </view>
-
-      <view class="charts-empty" v-else>
-        <text class="charts-empty-text">暂无数据</text>
+        <BarChart :data="barData" :monthLabel="dateRangeLabel" :mode="barMode" />
       </view>
     </template>
 
@@ -150,6 +119,40 @@
       <text class="empty-title">暂无记录</text>
       <text class="empty-hint">去对话页面记一笔吧</text>
     </view>
+
+    <!-- Edit note modal -->
+    <view class="modal-overlay" v-if="editModal.show" @tap="closeEditModal">
+      <view class="modal-card" @tap.stop>
+        <view class="modal-handle"></view>
+        <view class="modal-header">
+          <text class="modal-title">编辑备注</text>
+          <view class="modal-close" @tap="closeEditModal">
+            <text class="modal-close-text">&times;</text>
+          </view>
+        </view>
+        <view class="modal-expense-info">
+          <text class="modal-expense-emoji">{{ getCategoryIcon(editModal.expense?.category || '') }}</text>
+          <text class="modal-expense-label">{{ editModal.expense?.category }} ¥{{ editModal.expense?.amount?.toFixed(2) }}</text>
+        </view>
+        <view class="modal-input-wrap">
+          <input
+            class="modal-input"
+            v-model="editModal.note"
+            placeholder="添加备注..."
+            :focus="editModal.show"
+            maxlength="200"
+          />
+        </view>
+        <view class="modal-actions">
+          <view class="modal-btn modal-btn--cancel" @tap="closeEditModal">
+            <text class="modal-btn-text">取消</text>
+          </view>
+          <view class="modal-btn modal-btn--save" @tap="saveEditNote">
+            <text class="modal-btn-text modal-btn-text--save">保存</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -162,17 +165,12 @@ import type { Expense, Category } from '@/types'
 import PieChart from '@/components/PieChart.vue'
 import BarChart from '@/components/BarChart.vue'
 import { exportToExcel } from '@/utils/export'
+import { formatLocalDate } from '@/utils/date-format'
 
-type DateTab = 'today' | 'week' | 'month' | 'all'
-type ChartRange = 'month' | '3months' | '6months' | 'custom'
+type DateTab = 'today' | 'week' | 'month' | 'all' | 'custom'
 
 interface DateTabItem {
   key: DateTab
-  label: string
-}
-
-interface ChartRangeItem {
-  key: ChartRange
   label: string
 }
 
@@ -181,17 +179,10 @@ const dateTabs: DateTabItem[] = [
   { key: 'week', label: '本周' },
   { key: 'month', label: '本月' },
   { key: 'all', label: '全部' },
-]
-
-const chartRanges: ChartRangeItem[] = [
-  { key: 'month', label: '本月' },
-  { key: '3months', label: '近三月' },
-  { key: '6months', label: '近半年' },
-  { key: 'custom', label: '自定义' },
+  { key: 'custom', label: '日期筛选' },
 ]
 
 const activeDateTab = ref<DateTab>('month')
-const activeChartRange = ref<ChartRange>('month')
 const selectedCategories = ref<string[]>([])
 const categories = ref<Category[]>([])
 const allExpenses = ref<Expense[]>([])
@@ -202,6 +193,15 @@ const selectedMonth = ref(formatYearMonth(new Date()))
 // Custom date range
 const customStart = ref('')
 const customEnd = ref('')
+const today = formatLocalDate(new Date())
+
+function onCustomStartChange(e: any) {
+  customStart.value = e.detail.value
+}
+
+function onCustomEndChange(e: any) {
+  customEnd.value = e.detail.value
+}
 
 function formatYearMonth(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
@@ -214,45 +214,17 @@ function formatMonthLabel(ym: string): string {
 
 const monthLabel = computed(() => formatMonthLabel(selectedMonth.value))
 
-const isCurrentMonth = computed(() => {
-  return selectedMonth.value === formatYearMonth(new Date())
-})
-
-// Chart range label for display
-const chartRangeLabel = computed(() => {
-  switch (activeChartRange.value) {
-    case 'month':
-      return monthLabel.value
-    case '3months': {
-      const now = new Date()
-      const threeAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
-      return `${formatYearMonth(threeAgo).replace('-', '年')}月 - ${formatYearMonth(now).replace('-', '年')}月`
-    }
-    case '6months': {
-      const now = new Date()
-      const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
-      return `${formatYearMonth(sixAgo).replace('-', '年')}月 - ${formatYearMonth(now).replace('-', '年')}月`
-    }
-    case 'custom':
-      if (customStart.value && customEnd.value) {
-        return `${customStart.value} 至 ${customEnd.value}`
-      }
-      return '自定义范围'
+const dateRangeLabel = computed(() => {
+  const range = getDateRange(activeDateTab.value)
+  if (activeDateTab.value === 'custom' && customStart.value && customEnd.value) {
+    return `${customStart.value} 至 ${customEnd.value}`
   }
+  if (activeDateTab.value === 'month') return monthLabel.value
+  if (activeDateTab.value === 'today') return '今日'
+  if (activeDateTab.value === 'week') return '本周'
+  if (activeDateTab.value === 'all') return '全部'
+  return ''
 })
-
-function prevMonth() {
-  const [y, m] = selectedMonth.value.split('-').map(Number)
-  const d = new Date(y, m - 2, 1)
-  selectedMonth.value = formatYearMonth(d)
-}
-
-function nextMonth() {
-  if (isCurrentMonth.value) return
-  const [y, m] = selectedMonth.value.split('-').map(Number)
-  const d = new Date(y, m, 1)
-  selectedMonth.value = formatYearMonth(d)
-}
 
 function loadData() {
   categories.value = categoryService.getAll()
@@ -265,88 +237,38 @@ onShow(() => {
 
 function getDateRange(tab: DateTab): { start: string; end: string } {
   const now = new Date()
-  const today = now.toISOString().slice(0, 10)
+  const t = formatLocalDate(now)
 
   switch (tab) {
     case 'today':
-      return { start: today, end: today }
+      return { start: t, end: t }
     case 'week': {
       const dayOfWeek = now.getDay() || 7
       const monday = new Date(now)
       monday.setDate(now.getDate() - dayOfWeek + 1)
-      return { start: monday.toISOString().slice(0, 10), end: today }
+      return { start: formatLocalDate(monday), end: t }
     }
     case 'month': {
       const [y, m] = selectedMonth.value.split('-').map(Number)
       const firstDay = new Date(y, m - 1, 1)
       const lastDay = new Date(y, m, 0)
       return {
-        start: firstDay.toISOString().slice(0, 10),
-        end: lastDay.toISOString().slice(0, 10),
+        start: formatLocalDate(firstDay),
+        end: formatLocalDate(lastDay),
       }
     }
     case 'all':
       return { start: '0000-01-01', end: '9999-12-31' }
-  }
-}
-
-function getChartDateRange(): { start: string; end: string } {
-  const now = new Date()
-  const today = now.toISOString().slice(0, 10)
-
-  switch (activeChartRange.value) {
-    case 'month':
-      return getDateRange('month')
-    case '3months': {
-      const threeAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
-      return { start: threeAgo.toISOString().slice(0, 10), end: today }
-    }
-    case '6months': {
-      const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
-      return { start: sixAgo.toISOString().slice(0, 10), end: today }
-    }
     case 'custom':
       if (customStart.value && customEnd.value) {
         return { start: customStart.value, end: customEnd.value }
       }
-      return getDateRange('month')
+      return { start: t, end: t }
   }
 }
 
 function selectDateTab(tab: DateTab) {
   activeDateTab.value = tab
-}
-
-function selectChartRange(range: ChartRange) {
-  activeChartRange.value = range
-}
-
-function pickStartDate() {
-  uni.showModal({
-    title: '输入开始日期',
-    content: customStart.value || 'YYYY-MM-DD',
-    editable: true,
-    placeholderText: 'YYYY-MM-DD',
-    success(res: { confirm: boolean; content?: string }) {
-      if (res.confirm && res.content) {
-        customStart.value = res.content.trim()
-      }
-    },
-  })
-}
-
-function pickEndDate() {
-  uni.showModal({
-    title: '输入结束日期',
-    content: customEnd.value || 'YYYY-MM-DD',
-    editable: true,
-    placeholderText: 'YYYY-MM-DD',
-    success(res: { confirm: boolean; content?: string }) {
-      if (res.confirm && res.content) {
-        customEnd.value = res.content.trim()
-      }
-    },
-  })
 }
 
 function toggleCategory(name: string) {
@@ -380,23 +302,10 @@ const totalAmount = computed(() => {
   return filteredExpenses.value.reduce((sum, e) => sum + e.amount, 0)
 })
 
-// Chart data: uses chart time range and category filter
-const chartExpenses = computed(() => {
-  const { start, end } = getChartDateRange()
-  return expenseService.getByDateRangeAndCategory(
-    start,
-    end,
-    selectedCategories.value.length > 0 ? selectedCategories.value : undefined
-  )
-})
-
-const chartTotal = computed(() => {
-  return chartExpenses.value.reduce((sum, e) => sum + e.amount, 0)
-})
-
+// Charts use same data as the list
 const categoryPieData = computed(() => {
   const catMap = new Map<string, number>()
-  for (const e of chartExpenses.value) {
+  for (const e of filteredExpenses.value) {
     catMap.set(e.category, (catMap.get(e.category) ?? 0) + e.amount)
   }
   return Array.from(catMap.entries())
@@ -412,17 +321,17 @@ const categoryPieData = computed(() => {
     .sort((a, b) => b.value - a.value)
 })
 
-// Bar chart mode: daily for month view, weekly for longer ranges
+// Bar chart mode: daily for <= 31 days, weekly for longer
 const barMode = computed((): 'daily' | 'weekly' => {
-  if (activeChartRange.value === 'month') return 'daily'
-  return 'weekly'
+  const { start, end } = getDateRange(activeDateTab.value)
+  const days = Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / 86400000)
+  return days <= 31 ? 'daily' : 'weekly'
 })
 
 const barData = computed(() => {
   if (barMode.value === 'weekly') {
-    // Aggregate by ISO week
     const weekMap = new Map<string, number>()
-    for (const e of chartExpenses.value) {
+    for (const e of filteredExpenses.value) {
       const weekKey = getWeekKey(e.date)
       weekMap.set(weekKey, (weekMap.get(weekKey) ?? 0) + e.amount)
     }
@@ -430,9 +339,8 @@ const barData = computed(() => {
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => a.date.localeCompare(b.date))
   }
-  // Daily aggregation
   const dayMap = new Map<string, number>()
-  for (const e of chartExpenses.value) {
+  for (const e of filteredExpenses.value) {
     dayMap.set(e.date, (dayMap.get(e.date) ?? 0) + e.amount)
   }
   return Array.from(dayMap.entries())
@@ -445,7 +353,7 @@ function getWeekKey(dateStr: string): string {
   const dayOfWeek = d.getDay() || 7 // Monday = 1
   const monday = new Date(d)
   monday.setDate(d.getDate() - dayOfWeek + 1)
-  return monday.toISOString().slice(0, 10)
+  return formatLocalDate(monday)
 }
 
 function handleExport() {
@@ -455,9 +363,14 @@ function handleExport() {
   }
   const now = new Date()
   const ts = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
-  const filename = `MoneyChat_${ts}`
+  const filename = `MoneyBookAI_${ts}`
   exportToExcel(filteredExpenses.value, filename)
-  uni.showToast({ title: '导出成功', icon: 'success' })
+  uni.showModal({
+    title: '导出成功',
+    content: `文件已保存为：\n${filename}.xlsx\n\n保存位置：设备「下载」文件夹`,
+    showCancel: false,
+    confirmText: '好的',
+  })
 }
 
 function getCategoryIcon(categoryName: string): string {
@@ -465,19 +378,30 @@ function getCategoryIcon(categoryName: string): string {
   return cat?.icon || '📌'
 }
 
+const editModal = ref<{ show: boolean; expense: Expense | null; note: string }>({
+  show: false,
+  expense: null,
+  note: '',
+})
+
 function handleEdit(expense: Expense) {
-  uni.showModal({
-    title: '编辑备注',
-    content: expense.note || '(无备注)',
-    editable: true,
-    placeholderText: '输入新的备注...',
-    success(res) {
-      if (res.confirm && res.content !== undefined) {
-        expenseService.update(expense.id, { note: res.content })
-        loadData()
-      }
-    },
-  })
+  editModal.value = {
+    show: true,
+    expense,
+    note: expense.note || '',
+  }
+}
+
+function closeEditModal() {
+  editModal.value.show = false
+}
+
+function saveEditNote() {
+  if (editModal.value.expense) {
+    expenseService.update(editModal.value.expense.id, { note: editModal.value.note })
+    loadData()
+  }
+  closeEditModal()
 }
 
 function handleDelete(expense: Expense) {
@@ -538,31 +462,6 @@ function handleDelete(expense: Expense) {
   font-weight: bold;
 }
 
-.month-switcher-inline {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12rpx;
-}
-
-.month-arrow {
-  width: 40rpx;
-  height: 40rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.month-arrow--disabled {
-  opacity: 0.3;
-}
-
-.month-arrow-text {
-  font-size: 28rpx;
-  color: #fff;
-  font-weight: bold;
-}
-
 .category-filter {
   background-color: #fff;
   padding: 16rpx 24rpx;
@@ -597,39 +496,6 @@ function handleDelete(expense: Expense) {
 
 .category-chip--active .category-chip-text {
   color: #2b7cff;
-}
-
-/* Chart time range selector */
-.chart-range-bar {
-  display: flex;
-  gap: 0;
-  margin: 16rpx 24rpx 0;
-  background-color: #fff;
-  border-radius: 12rpx;
-  overflow: hidden;
-}
-
-.chart-range-tab {
-  flex: 1;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f5f5;
-}
-
-.chart-range-tab--active {
-  background-color: #e8f0fe;
-}
-
-.chart-range-text {
-  font-size: 24rpx;
-  color: #666;
-}
-
-.chart-range-tab--active .chart-range-text {
-  color: #2b7cff;
-  font-weight: bold;
 }
 
 /* Custom date range inputs */
@@ -862,5 +728,130 @@ function handleDelete(expense: Expense) {
 .empty-hint {
   font-size: 26rpx;
   color: #ccc;
+}
+
+/* Edit note modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-card {
+  width: 100%;
+  background-color: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 16rpx 40rpx 48rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+}
+
+.modal-handle {
+  width: 64rpx;
+  height: 8rpx;
+  background-color: #e0e0e0;
+  border-radius: 4rpx;
+  margin: 0 auto 28rpx;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32rpx;
+}
+
+.modal-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.modal-close {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border-radius: 50%;
+}
+
+.modal-close-text {
+  font-size: 32rpx;
+  color: #999;
+  line-height: 1;
+}
+
+.modal-expense-info {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 28rpx;
+  padding: 20rpx 24rpx;
+  background-color: #fafafa;
+  border-radius: 16rpx;
+}
+
+.modal-expense-emoji {
+  font-size: 36rpx;
+}
+
+.modal-expense-label {
+  font-size: 26rpx;
+  color: #666;
+}
+
+.modal-input-wrap {
+  margin-bottom: 32rpx;
+}
+
+.modal-input {
+  width: 100%;
+  height: 96rpx;
+  background-color: #f5f5f5;
+  border-radius: 20rpx;
+  padding: 0 28rpx;
+  font-size: 28rpx;
+  color: #333;
+  border: 2rpx solid transparent;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 44rpx;
+}
+
+.modal-btn--cancel {
+  background-color: #f5f5f5;
+}
+
+.modal-btn--save {
+  background-color: #1a1a1a;
+}
+
+.modal-btn-text {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #666;
+}
+
+.modal-btn-text--save {
+  color: #fff;
 }
 </style>
