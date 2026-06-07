@@ -4,7 +4,7 @@
       <text class="bar-chart-title-text">{{ props.mode === 'weekly' ? '每周支出' : '每日支出' }}</text>
     </view>
     <view class="bar-chart-body" v-if="bars.length > 0">
-      <svg viewBox="0 0 320 120" class="bar-svg">
+      <svg viewBox="0 0 320 135" class="bar-svg">
         <!-- Y axis labels -->
         <text x="0" y="12" class="axis-label">¥{{ formatAmount(maxValue) }}</text>
         <text x="0" y="58" class="axis-label">¥{{ formatAmount(maxValue / 2) }}</text>
@@ -24,9 +24,18 @@
           :fill="bar.color"
           rx="2"
         />
+        <!-- X axis date labels -->
+        <text
+          v-for="(label, i) in xLabels"
+          :key="'x' + i"
+          :x="label.x"
+          y="115"
+          text-anchor="middle"
+          class="axis-label"
+        >{{ label.text }}</text>
       </svg>
       <view class="bar-chart-footer">
-        <text class="bar-chart-hint">{{ monthLabel }} · {{ bars.length }} 天有支出</text>
+        <text class="bar-chart-hint">{{ monthLabel }} · {{ bars.length }} {{ props.mode === 'weekly' ? '周' : '天' }}有支出</text>
       </view>
     </view>
     <view class="bar-empty" v-else>
@@ -95,6 +104,53 @@ function formatAmount(v: number): string {
   if (v >= 1000) return (v / 1000).toFixed(1) + 'k'
   return Math.round(v).toString()
 }
+
+interface XLabel {
+  x: number
+  text: string
+}
+
+const xLabels = computed<XLabel[]>(() => {
+  const count = props.data.length
+  if (count === 0) return []
+
+  const chartWidth = CHART_RIGHT - CHART_LEFT
+  // Show max ~8 labels to avoid overlap
+  const step = Math.max(1, Math.ceil(count / 8))
+  const labels: XLabel[] = []
+
+  for (let i = 0; i < count; i += step) {
+    const x = count === 1
+      ? CHART_LEFT + chartWidth / 2
+      : CHART_LEFT + (i * chartWidth) / (count - 1)
+    const d = props.data[i]
+    let text: string
+    if (props.mode === 'weekly') {
+      // Show MM/DD for week start
+      const parts = d.date.split('-')
+      text = `${parseInt(parts[1])}/${parseInt(parts[2])}`
+    } else {
+      // Show day number
+      text = `${parseInt(d.date.split('-')[2])}日`
+    }
+    labels.push({ x: Math.round(x), text })
+  }
+
+  // Always show last label
+  if (count > 1 && (count - 1) % step !== 0) {
+    const d = props.data[count - 1]
+    let text: string
+    if (props.mode === 'weekly') {
+      const parts = d.date.split('-')
+      text = `${parseInt(parts[1])}/${parseInt(parts[2])}`
+    } else {
+      text = `${parseInt(d.date.split('-')[2])}日`
+    }
+    labels.push({ x: CHART_RIGHT, text })
+  }
+
+  return labels
+})
 </script>
 
 <style scoped>
@@ -121,7 +177,7 @@ function formatAmount(v: number): string {
 
 .bar-svg {
   width: 100%;
-  height: 120px;
+  height: 135px;
 }
 
 .axis-label {
